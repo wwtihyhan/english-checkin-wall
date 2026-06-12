@@ -1,0 +1,4 @@
+node_modules/
+data/checkins.json
+data/images/
+.DS_Store

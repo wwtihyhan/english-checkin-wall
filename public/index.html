@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌟 英语阅读打卡墙</title>
+<style>
+  :root {
+    --bg: #FFF8F0;
+    --card-bg: #FFFFFF;
+    --primary: #FF6B6B;
+    --secondary: #FFA94D;
+    --accent: #69DB7C;
+    --blue: #74C0FC;
+    --purple: #B197FC;
+    --pink: #F783AC;
+    --yellow: #FFD43B;
+    --text: #2D3436;
+    --text-light: #636E72;
+    --shadow-sm: 0 2px 8px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+    --radius-sm: 12px;
+    --radius-md: 18px;
+    --radius-lg: 24px;
+    --radius-xl: 32px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .bg-decor {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.25;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .bg-decor-1 { width: 300px; height: 300px; background: #FFD43B; top: -60px; left: -60px; }
+  .bg-decor-2 { width: 250px; height: 250px; background: #FF6B6B; top: 40%; right: -80px; }
+  .bg-decor-3 { width: 200px; height: 200px; background: #74C0FC; bottom: -40px; left: 30%; }
+  .bg-decor-4 { width: 180px; height: 180px; background: #B197FC; top: 20%; left: 50%; }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 24px 20px 40px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    padding: 32px 0 24px;
+  }
+  .header-icon {
+    font-size: 56px;
+    display: block;
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-12px); }
+  }
+  .header h1 {
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #FF6B6B, #F783AC, #B197FC);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-top: 8px;
+    letter-spacing: 2px;
+  }
+  .header p { color: var(--text-light); font-size: 15px; margin-top: 6px; }
+  .streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding: 8px 18px;
+    background: linear-gradient(135deg, #FFF3BF, #FFE066);
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #E67700;
+    box-shadow: 0 2px 8px rgba(255,212,59,0.3);
+  }
+  .sync-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 10px;
+    font-size: 12px;
+    color: var(--text-light);
+    animation: pulse-sync 2s ease-in-out infinite;
+  }
+  @keyframes pulse-sync {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* Form card */
+  .form-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    padding: 28px 28px 24px;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .form-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #FF6B6B, #FFA94D, #FFD43B, #69DB7C, #74C0FC, #B197FC);
+  }
+  .form-card h2 {
+    font-size: 20px; font-weight: 700; color: var(--text);
+    margin-bottom: 20px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .form-row {
+    display: flex; gap: 16px;
+    margin-bottom: 16px; flex-wrap: wrap;
+  }
+  .form-group { flex: 1; min-width: 180px; }
+  .form-group label {
+    display: block; font-size: 13px; font-weight: 600;
+    color: var(--text); margin-bottom: 6px;
+  }
+  .form-group input[type="text"],
+  .form-group input[type="date"] {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #E9ECEF;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--text);
+    background: #F8F9FA;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .form-group input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(255,107,107,0.15);
+    background: #FFF;
+  }
+
+  /* Name combo box */
+  .name-combo-wrap { position: relative; }
+  .name-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0; right: 0;
+    background: #FFF;
+    border: 2px solid #E9ECEF;
+    border-top: none;
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    z-index: 50;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+  .name-dropdown.open { display: block; }
+  .name-dropdown-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text);
+    transition: background 0.15s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .name-dropdown-item:hover, .name-dropdown-item.active {
+    background: #FFF5F5;
+    color: var(--primary);
+  }
+  .name-dropdown-item .dd-avatar {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .name-dropdown-item .dd-name { font-weight: 600; }
+  .name-dropdown-item .dd-count {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-light);
+  }
+  .name-dropdown-empty {
+    padding: 14px 16px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-light);
+  }
+
+  /* Image upload area */
+  .img-upload-area {
+    border: 2px dashed #E9ECEF;
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #F8F9FA;
+    position: relative;
+  }
+  .img-upload-area:hover, .img-upload-area.drag-over {
+    border-color: var(--primary);
+    background: #FFF5F5;
+  }
+  .img-upload-area input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  .img-upload-icon { font-size: 32px; margin-bottom: 6px; }
+  .img-upload-text { font-size: 14px; color: var(--text-light); }
+  .img-upload-text strong { color: var(--primary); }
+
+  /* Image preview */
+  .img-preview-wrap {
+    display: none;
+    position: relative;
+    margin-top: 10px;
+  }
+  .img-preview-wrap img {
+    width: 100%;
+    max-height: 200px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    display: block;
+  }
+  .img-remove-btn {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(0,0,0,0.55);
+    color: #FFF;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .img-remove-btn:hover { background: #FF6B6B; }
+
+  /* Already checked badge on form */
+  .already-checked-notice {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: #FFF9DB;
+    border: 2px solid #FFE066;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #E67700;
+    font-weight: 600;
+  }
+  .already-checked-notice.visible { display: flex; }
+
+  /* Buttons */
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .btn {
+    padding: 14px 32px;
+    border: none;
+    border-radius: 50px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    letter-spacing: 1px;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn-primary {
+    background: linear-gradient(135deg, #FF6B6B, #FF8787);
+    color: #FFF;
+    box-shadow: 0 4px 16px rgba(255,107,107,0.35);
+    font-size: 18px;
+    padding: 16px 48px;
+    flex: 1;
+    min-width: 200px;
+  }
+  .btn-primary:hover {
+    box-shadow: 0 6px 24px rgba(255,107,107,0.45);
+    transform: translateY(-2px);
+  }
+  .btn-primary:active { transform: translateY(0) scale(0.96); }
+  .btn-primary:disabled {
+    background: #CCC;
+    box-shadow: none;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-secondary {
+    background: #F1F3F5;
+    color: var(--text);
+  }
+  .btn-secondary:hover { background: #E9ECEF; }
+
+  /* Wall header */
+  .wall-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .wall-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
+  .wall-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  /* Search */
+  .search-box {
+    padding: 8px 14px;
+    border: 2px solid #E9ECEF;
+    border-radius: 50px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    width: 160px;
+    transition: border-color 0.2s;
+  }
+  .search-box:focus { border-color: var(--primary); }
+
+  .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-tab {
+    padding: 7px 16px;
+    border-radius: 50px;
+    border: 2px solid #E9ECEF;
+    background: #FFF;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .filter-tab:hover { border-color: #DEE2E6; }
+  .filter-tab.active {
+    background: var(--primary);
+    color: #FFF;
+    border-color: var(--primary);
+  }
+
+  /* ===== Matrix view ===== */
+  .matrix-wrap {
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .matrix-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+  }
+  .matrix-table {
+    min-width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .matrix-table th, .matrix-table td {
+    padding: 0;
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  /* Header row */
+  .matrix-table thead th {
+    position: sticky;
+    top: 0;
+    background: #FFF;
+    z-index: 2;
+    border-bottom: 2px solid #F1F3F5;
+  }
+  .mth-name {
+    width: 120px;
+    min-width: 120px;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-light);
+    padding: 10px 8px !important;
+    background: #FFF !important;
+    text-align: left !important;
+    border-right: 2px solid #F1F3F5;
+  }
+  .mth-date {
+    padding: 10px 4px !important;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+    min-width: 44px;
+    white-space: nowrap;
+    position: relative;
+  }
+  .mth-date .mth-weekday {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-light);
+    margin-top: 1px;
+  }
+  .mth-date.today-col {
+    background: linear-gradient(180deg, #FFF9DB 0%, #FFF 100%);
+    color: var(--primary);
+  }
+  .mth-date.today-col .mth-weekday { color: var(--primary); }
+  .mth-summary {
+    min-width: 48px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--purple);
+    padding: 8px 4px !important;
+  }
+
+  /* Body rows */
+  .matrix-table tbody td {
+    border-bottom: 1px solid #F8F9FA;
+    position: relative;
+    transition: background 0.15s;
+  }
+  .matrix-table tbody tr:hover td {
+    background: #FFF8F0;
+  }
+  .matrix-table tbody tr:hover .mtb-name {
+    background: #FFF8F0 !important;
+  }
+  .matrix-table tbody tr:hover .mtb-name-inner {
+    background: #FFF8F0;
+  }
+
+  /* Name cell (sticky left) */
+  .mtb-name {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: #FFF !important;
+    border-right: 2px solid #F1F3F5;
+    padding: 0 !important;
+    min-width: 120px;
+  }
+  .mtb-name-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    height: 100%;
+  }
+  .mtb-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800;
+    color: #FFF; flex-shrink: 0;
+  }
+  .mtb-name-info { min-width: 0; }
+  .mtb-name-info .mtb-name-text {
+    font-size: 14px; font-weight: 700; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mtb-name-info .mtb-streak {
+    font-size: 10px; color: var(--text-light);
+    white-space: nowrap;
+  }
+
+  /* Cell */
+  .mtb-cell {
+    height: 44px;
+    cursor: default;
+    position: relative;
+    min-width: 44px;
+    vertical-align: middle;
+  }
+  .mtb-cell.today-cell {
+    background: rgba(255,249,219,0.5);
+  }
+  .mtb-cell-inner {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 1px;
+    height: 100%;
+  }
+  .mtb-cell-inner .cell-stars {
+    font-size: 12px;
+    letter-spacing: 1px;
+    line-height: 1;
+  }
+  .mtb-cell-inner .cell-title {
+    font-size: 9px;
+    color: var(--text-light);
+    max-width: 40px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+  }
+  .mtb-cell-inner .cell-img-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    margin-top: 1px;
+  }
+  .mtb-cell-empty {
+    color: #E9ECEF;
+    font-size: 14px;
+    font-weight: 300;
+  }
+
+  /* Cell tooltip on click */
+  .cell-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #FFF;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: 12px 14px;
+    z-index: 20;
+    white-space: nowrap;
+    min-width: 150px;
+    text-align: center;
+    pointer-events: none;
+    border: 2px solid #F1F3F5;
+  }
+  .cell-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%; left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: #FFF;
+  }
+  .cell-tooltip .tt-stars { font-size: 18px; letter-spacing: 2px; }
+  .cell-tooltip .tt-title { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 4px; }
+  .cell-tooltip .tt-date { font-size: 11px; color: var(--text-light); margin-top: 2px; }
+  .cell-tooltip .tt-img { width: 100px; height: 80px; object-fit: cover; border-radius: 8px; margin-top: 6px; }
+  .cell-tooltip .tt-delete {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #FF6B6B;
+    cursor: pointer;
+    pointer-events: auto;
+    font-weight: 600;
+  }
+
+  /* Summary cell */
+  .mtb-summary-cell {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--purple);
+    min-width: 48px;
+  }
+
+  /* Legend */
+  .matrix-legend {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 10px 16px;
+    font-size: 12px;
+    color: var(--text-light);
+    flex-wrap: wrap;
+  }
+  .matrix-legend .leg-item { display: flex; align-items: center; gap: 5px; }
+  .matrix-legend .leg-dot {
+    width: 12px; height: 12px;
+    border-radius: 3px;
+  }
+  .leg-dot.leg-done { background: #69DB7C; }
+  .leg-dot.leg-today { background: #FFD43B; border: 1px solid #FFA94D; }
+  .leg-dot.leg-empty { background: #F1F3F5; }
+
+  /* Empty state */
+  .empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--card-bg);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+  }
+  .empty-icon { font-size: 64px; display: block; margin-bottom: 12px; animation: bounce 2s ease-in-out infinite; }
+  .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 6px; }
+  .empty-state p { font-size: 14px; color: var(--text-light); }
+
+  /* Lightbox */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    cursor: pointer;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 90vw;
+    max-height: 85vh;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    object-fit: contain;
+    cursor: default;
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 20px; right: 24px;
+    font-size: 36px; color: #FFF;
+    cursor: pointer; font-weight: 300;
+    line-height: 1;
+  }
+
+  /* Toast */
+  .toast-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    z-index: 100;
+  }
+  .toast {
+    background: #FFF;
+    border-radius: var(--radius-lg);
+    padding: 32px 40px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    animation: toastIn 0.5s ease-out, toastOut 0.5s ease-in 2.2s forwards;
+    pointer-events: auto;
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: scale(0.8) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes toastOut {
+    from { opacity: 1; }
+    to { opacity: 0; transform: scale(0.9) translateY(-10px); }
+  }
+  .toast-emoji { font-size: 56px; display: block; margin-bottom: 12px; }
+  .toast h3 { font-size: 22px; color: var(--text); margin-bottom: 4px; }
+  .toast p { font-size: 14px; color: var(--text-light); }
+
+  /* Warning toast */
+  .warn-toast {
+    position: fixed;
+    top: 24px; left: 50%; transform: translateX(-50%);
+    background: #FFF9DB;
+    border: 2px solid #FFE066;
+    color: #E67700;
+    padding: 14px 28px;
+    border-radius: 50px;
+    font-size: 15px;
+    font-weight: 700;
+    box-shadow: var(--shadow-md);
+    z-index: 500;
+    animation: warnIn 0.3s ease-out, warnOut 0.3s ease-in 2.2s forwards;
+    white-space: nowrap;
+  }
+  @keyframes warnIn {
+    from { opacity: 0; top: 0; }
+    to { opacity: 1; top: 24px; }
+  }
+  @keyframes warnOut {
+    from { opacity: 1; }
+    to { opacity: 0; top: 0; }
+  }
+
+  /* Confetti */
+  .confetti-piece {
+    position: fixed;
+    pointer-events: none;
+    z-index: 200;
+    animation: confettiFall 2.5s ease-out forwards;
+  }
+  @keyframes confettiFall {
+    0% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+    100% { opacity: 0; transform: translateY(100vh) rotate(720deg) scale(0.3); }
+  }
+
+  /* Error state */
+  .error-banner {
+    background: #FFE3E3;
+    border: 2px solid #FF6B6B;
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: #E03131;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* Responsive */
+  @media (max-width: 600px) {
+    .header h1 { font-size: 26px; }
+    .header-icon { font-size: 44px; }
+    .form-row { flex-direction: column; gap: 12px; }
+    .form-group { min-width: 100%; }
+    .btn-primary { font-size: 16px; padding: 14px 24px; }
+    .wall-controls { flex-direction: column; align-items: flex-start; }
+    .search-box { width: 100%; }
+    .mth-name, .mtb-name { min-width: 90px; width: 90px; }
+    .mth-date { min-width: 36px; font-size: 12px; }
+    .mtb-cell { min-width: 36px; height: 38px; }
+    .mtb-avatar { width: 26px; height: 26px; font-size: 13px; }
+    .mtb-name-info .mtb-name-text { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-decor bg-decor-1"></div>
+<div class="bg-decor bg-decor-2"></div>
+<div class="bg-decor bg-decor-3"></div>
+<div class="bg-decor bg-decor-4"></div>
+
+<div class="container" id="appContainer">
+  <!-- Error banner -->
+  <div class="error-banner" id="errorBanner" style="display:none;">
+    <span>⚠️</span>
+    <span id="errorText"></span>
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <span class="header-icon">📚</span>
+    <h1>英语阅读打卡墙</h1>
+    <p>坚持每天阅读，积累每一个🌟 · 多人实时共享</p>
+    <div>
+      <span class="streak-badge" id="streakBadge">🔥 今日已打卡 0 人</span>
+      <span class="sync-indicator" id="syncIndicator">🔄 实时同步中</span>
+    </div>
+  </header>
+
+  <!-- Form -->
+  <div class="form-card">
+    <h2>📝 今天打卡</h2>
+
+    <!-- Already checked warning -->
+    <div class="already-checked-notice" id="alreadyCheckedNotice">
+      <span>⚠️</span>
+      <span id="alreadyCheckedText">今天已经打过卡啦！每天只能打一次哦 🌟</span>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group" style="position:relative;">
+        <label>👧 小朋友姓名</label>
+        <div class="name-combo-wrap">
+          <input type="text" id="inputName" placeholder="选择或输入小朋友姓名" autocomplete="off"
+                 oninput="onNameInput()" onfocus="showNameDropdown()" onkeydown="onNameKeydown(event)">
+          <input type="hidden" id="inputNameHidden">
+          <div class="name-dropdown" id="nameDropdown"></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex: 2;">
+        <label>📖 打卡标题（今天读了什么？）</label>
+        <input type="text" id="inputTitle" placeholder="例如：牛津树 Level 3 — The Snowman" autocomplete="off">
+      </div>
+    </div>
+
+    <!-- Image upload -->
+    <div class="form-row">
+      <div class="form-group" style="flex: 1;">
+        <label>📷 上传阅读照片（选填）</label>
+        <div class="img-upload-area" id="imgUploadArea">
+          <input type="file" id="inputImg" accept="image/*" onchange="onImgSelected(event)">
+          <div class="img-upload-icon">🖼️</div>
+          <div class="img-upload-text">点击或拖拽上传图片<br><strong>支持 JPG / PNG / GIF</strong></div>
+        </div>
+        <div class="img-preview-wrap" id="imgPreviewWrap">
+          <img id="imgPreview" src="" alt="预览图">
+          <button class="img-remove-btn" onclick="removeImg()" title="移除图片">×</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnCheckIn" onclick="doCheckIn()">✅ 打卡签到</button>
+      <button class="btn btn-secondary" onclick="clearForm()">🔄 重置</button>
+    </div>
+  </div>
+
+  <!-- Wall -->
+  <div class="wall-header">
+    <h2>🏆 打卡记录墙</h2>
+    <div class="wall-controls">
+      <input class="search-box" type="text" id="searchBox" placeholder="🔍 搜索小朋友姓名…" oninput="renderWall()">
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="week" onclick="setFilter('week', this)">本周</button>
+        <button class="filter-tab" data-filter="month" onclick="setFilter('month', this)">本月</button>
+      </div>
+    </div>
+  </div>
+  <div class="matrix-wrap" id="checkinGrid">
+    <div class="empty-state">
+      <span class="empty-icon">📭</span>
+      <h3>还没有打卡记录</h3>
+      <p>快来打卡吧！</p>
+    </div>
+  </div>
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close" onclick="closeLightbox()">×</span>
+  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
+</div>
+
+<!-- Toast overlay -->
+<div class="toast-overlay" id="toastOverlay" style="display:none;"></div>
+
+<script>
+const CARD_COLORS = 6;
+const STARS_MAX = 5;
+const POLL_INTERVAL = 3000; // 3 seconds auto-refresh
+
+let checkins = [];
+let currentFilter = 'week';
+let pendingImgDataUrl = null;
+let nameDropdownIndex = -1;
+let pollTimer = null;
+let useApi = false; // true = server API, false = localStorage fallback
+
+// ── Detect backend availability ─────────────────────────
+async function detectBackend() {
+  try {
+    const res = await fetch('/api/checkins', { method: 'GET', signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      useApi = true;
+      document.getElementById('syncIndicator').textContent = '🌐 多人同步模式';
+      document.getElementById('syncIndicator').style.color = '#69DB7C';
+      console.log('✅ Backend detected, using shared data mode');
+      return true;
+    }
+  } catch {}
+  useApi = false;
+  document.getElementById('syncIndicator').textContent = '💻 本地模式';
+  document.getElementById('syncIndicator').style.color = '#FFA94D';
+  console.log('⚠️ No backend, using localStorage mode');
+  return false;
+}
+
+// ── LocalStorage helpers (fallback) ─────────────────────
+function loadLocal() {
+  return JSON.parse(localStorage.getItem('english_checkins') || '[]');
+}
+function saveLocal(data) {
+  localStorage.setItem('english_checkins', JSON.stringify(data));
+}
+
+// ── API helpers ──────────────────────────────────────────
+async function apiFetch(url, options = {}) {
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: '请求失败' }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res;
+}
+
+async function fetchCheckins() {
+  if (useApi) {
+    try {
+      const res = await apiFetch('/api/checkins');
+      const newData = await res.json();
+      const changed = JSON.stringify(newData) !== JSON.stringify(checkins);
+      checkins = newData;
+      if (changed) renderWall(); else updateStats();
+      hideError();
+    } catch (e) {
+      showError('服务器连接失败: ' + e.message);
+    }
+  } else {
+    checkins = loadLocal();
+    renderWall();
+  }
+}
+
+async function createCheckin(record) {
+  if (useApi) {
+    const res = await apiFetch('/api/checkins', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    });
+    return res.json();
+  } else {
+    const data = loadLocal();
+    // Server-side ID generation simulated
+    record.id = Date.now();
+    // One-per-day check
+    if (data.some(c => c.name.trim().toLowerCase() === record.name.trim().toLowerCase() && c.date === record.date)) {
+      throw new Error(`${record.name} 今天已经打过卡了`);
+    }
+    data.push(record);
+    saveLocal(data);
+    return record;
+  }
+}
+
+async function deleteCheckinApi(id) {
+  if (useApi) {
+    await apiFetch(`/api/checkins/${id}`, { method: 'DELETE' });
+  } else {
+    const data = loadLocal();
+    saveLocal(data.filter(c => c.id !== id));
+  }
+}
+
+// ── Auto polling (API mode only) ────────────────────────
+function startPolling() {
+  stopPolling();
+  if (useApi) {
+    pollTimer = setInterval(fetchCheckins, POLL_INTERVAL);
+  }
+}
+
+function stopPolling() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+// ── Init ─────────────────────────────────────────────────
+
+// Detect backend first, then start
+detectBackend().then(() => {
+  fetchCheckins();
+  if (useApi) startPolling();
+});
+
+// ── Helpers ──────────────────────────────────────────────
+function getToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function getUniqueKids() {
+  return [...new Set(checkins.map(c => c.name).filter(Boolean))];
+}
+
+function hasCheckedIn(name, date) {
+  return checkins.some(c => c.name.trim().toLowerCase() === name.trim().toLowerCase() && c.date === date);
+}
+
+function calcStreak(name) {
+  const days = [...new Set(
+    checkins.filter(c => c.name === name).map(c => c.date)
+  )].sort();
+  if (!days.length) return 0;
+  let streak = 1;
+  for (let i = days.length - 1; i > 0; i--) {
+    const d1 = new Date(days[i-1]);
+    const d2 = new Date(days[i]);
+    if ((d2 - d1) / (1000*60*60*24) === 1) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function calcStars(name) {
+  return Math.min(calcStreak(name) + 1, STARS_MAX);
+}
+
+// ── Error display ────────────────────────────────────────
+function showError(msg) {
+  const banner = document.getElementById('errorBanner');
+  document.getElementById('errorText').textContent = msg;
+  banner.style.display = 'flex';
+}
+
+function hideError() {
+  document.getElementById('errorBanner').style.display = 'none';
+}
+
+// ── Name combo box logic ─────────────────────────────────
+function getKnownKids() {
+  const seen = new Map();
+  for (let i = checkins.length - 1; i >= 0; i--) {
+    const n = checkins[i].name.trim();
+    if (n && !seen.has(n)) seen.set(n, checkins.filter(c => c.name.trim() === n).length);
+  }
+  return [...seen.entries()];
+}
+
+function showNameDropdown() {
+  const kids = getKnownKids();
+  const dd = document.getElementById('nameDropdown');
+  const input = document.getElementById('inputName');
+  const filter = input.value.trim().toLowerCase();
+
+  const filtered = filter ? kids.filter(([n]) => n.toLowerCase().includes(filter)) : kids;
+
+  if (filtered.length === 0) {
+    dd.innerHTML = '<div class="name-dropdown-empty">' + (filter ? '没有匹配的小朋友，输入新名字后打卡即可添加' : '还没有小朋友，输入名字开始打卡吧') + '</div>';
+  } else {
+    dd.innerHTML = filtered.map(([n, cnt], i) => {
+      const bgColors = ['#FF6B6B','#FFA94D','#FFD43B','#69DB7C','#74C0FC','#B197FC'];
+      const bg = bgColors[Math.abs(hashCode(n)) % bgColors.length];
+      return `<div class="name-dropdown-item" data-name="${escapeHtml(n)}" onclick="selectName('${escapeHtml(n)}')" onmouseenter="hoverNameItem(${i})">
+        <span class="dd-avatar" style="background:${bg}20;color:${bg};">${escapeHtml(n[0])}</span>
+        <span class="dd-name">${escapeHtml(n)}</span>
+        <span class="dd-count">已打卡 ${cnt} 次</span>
+      </div>`;
+    }).join('');
+    if (filter && !kids.some(([n]) => n.toLowerCase() === filter)) {
+      dd.innerHTML += '<div class="name-dropdown-item" style="color:var(--primary);font-weight:600;" data-name="' + escapeHtml(filter) + '" onclick="selectNameNew(\'' + escapeHtml(filter).replace(/'/g, "\\'") + '\')"><span class="dd-avatar" style="background:#F1F3F5;color:var(--primary);">＋</span><span class="dd-name">添加 「' + escapeHtml(filter) + '」</span></div>';
+    }
+  }
+  dd.classList.add('open');
+  nameDropdownIndex = -1;
+}
+
+function hashCode(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0; }
+  return h;
+}
+
+function closeNameDropdown() {
+  document.getElementById('nameDropdown').classList.remove('open');
+  nameDropdownIndex = -1;
+}
+
+function selectName(name) {
+  document.getElementById('inputName').value = name;
+  document.getElementById('inputNameHidden').value = name;
+  closeNameDropdown();
+  checkAlreadyDone();
+}
+
+function selectNameNew(name) {
+  document.getElementById('inputName').value = name;
+  document.getElementById('inputNameHidden').value = '';
+  closeNameDropdown();
+  checkAlreadyDone();
+}
+
+function onNameInput() {
+  document.getElementById('inputNameHidden').value = '';
+  showNameDropdown();
+  checkAlreadyDone();
+}
+
+function hoverNameItem(idx) { nameDropdownIndex = idx; }
+
+function onNameKeydown(e) {
+  const dd = document.getElementById('nameDropdown');
+  const items = dd.querySelectorAll('.name-dropdown-item');
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    nameDropdownIndex = Math.min(nameDropdownIndex + 1, items.length - 1);
+    items.forEach((el, i) => el.classList.toggle('active', i === nameDropdownIndex));
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    nameDropdownIndex = Math.max(nameDropdownIndex - 1, -1);
+    items.forEach((el, i) => el.classList.toggle('active', i === nameDropdownIndex));
+  } else if (e.key === 'Enter') {
+    if (nameDropdownIndex >= 0 && items[nameDropdownIndex]) {
+      e.preventDefault();
+      items[nameDropdownIndex].click();
+    } else {
+      closeNameDropdown();
+    }
+  } else if (e.key === 'Escape') {
+    closeNameDropdown();
+  }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.name-combo-wrap')) closeNameDropdown();
+});
+
+// ── One-per-day check ────────────────────────────────────
+function checkAlreadyDone() {
+  const name = document.getElementById('inputName').value.trim();
+  const date = getToday();
+  const notice = document.getElementById('alreadyCheckedNotice');
+  const btn    = document.getElementById('btnCheckIn');
+
+  if (name && hasCheckedIn(name, date)) {
+    document.getElementById('alreadyCheckedText').textContent =
+      `${name} 今天已经打过卡啦！每天只能打一次哦 🌟`;
+    notice.classList.add('visible');
+    btn.disabled = true;
+  } else {
+    notice.classList.remove('visible');
+    btn.disabled = false;
+  }
+}
+
+// ── Image upload ─────────────────────────────────────────
+function onImgSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    pendingImgDataUrl = ev.target.result;
+    document.getElementById('imgPreview').src = pendingImgDataUrl;
+    document.getElementById('imgPreviewWrap').style.display = 'block';
+    document.getElementById('imgUploadArea').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeImg() {
+  pendingImgDataUrl = null;
+  document.getElementById('inputImg').value = '';
+  document.getElementById('imgPreviewWrap').style.display = 'none';
+  document.getElementById('imgUploadArea').style.display = 'block';
+}
+
+// Drag-over style
+const uploadArea = document.getElementById('imgUploadArea');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      pendingImgDataUrl = ev.target.result;
+      document.getElementById('imgPreview').src = pendingImgDataUrl;
+      document.getElementById('imgPreviewWrap').style.display = 'block';
+      document.getElementById('imgUploadArea').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// ── Check-in ─────────────────────────────────────────────
+async function doCheckIn() {
+  const nameEl  = document.getElementById('inputName');
+  const titleEl = document.getElementById('inputTitle');
+
+  const name  = nameEl.value.trim();
+  const date  = getToday();
+  const title = titleEl.value.trim();
+
+  if (!name) { shake(nameEl); return; }
+  if (!title) { shake(titleEl); return; }
+
+  if (hasCheckedIn(name, date)) {
+    showWarn(`${name} 今天已打卡，明天再来吧 🌟`);
+    return;
+  }
+
+  const stars = calcStars(name);
+  const allByKid = checkins.filter(c => c.name === name);
+  const colorIndex = allByKid.length % CARD_COLORS;
+
+  const record = {
+    name, date, title, stars, colorIndex,
+    img: pendingImgDataUrl || null,
+    timestamp: new Date().toISOString()
+  };
+
+  try {
+    const created = await createCheckin(record);
+    checkins.push(created);
+    showSuccess(name, title, stars);
+    titleEl.value = '';
+    removeImg();
+    titleEl.focus();
+    checkAlreadyDone();
+    renderWall();
+  } catch (e) {
+    showWarn('打卡失败: ' + e.message);
+  }
+}
+
+function shake(el) {
+  el.style.borderColor = '#FF6B6B';
+  el.style.animation = 'none';
+  el.offsetHeight;
+  el.style.animation = 'shakeField 0.4s ease';
+  el.focus();
+  setTimeout(() => { el.style.borderColor = '#E9ECEF'; el.style.animation = ''; }, 1500);
+}
+
+// ── Delete ───────────────────────────────────────────────
+async function deleteCheckin(id) {
+  if (!confirm('确定要删除这条打卡记录吗？')) return;
+  try {
+    await deleteCheckinApi(id);
+    checkins = checkins.filter(c => c.id !== id);
+    renderWall();
+  } catch (e) {
+    showWarn('删除失败: ' + e.message);
+  }
+}
+
+// ── Filter ───────────────────────────────────────────────
+function setFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderWall();
+}
+
+// ── Matrix helpers ───────────────────────────────────────
+function getDateRange() {
+  const now = new Date();
+  const dates = [];
+  if (currentFilter === 'week') {
+    const day = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    monday.setHours(0,0,0,0);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      dates.push(d);
+    }
+  } else {
+    const first = new Date(now.getFullYear(), now.getMonth(), 1);
+    const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    for (let d = first; d <= last; d.setDate(d.getDate() + 1)) {
+      dates.push(new Date(d));
+    }
+  }
+  return dates;
+}
+
+function fmtDate(d) {
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${m}-${day}`;
+}
+
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ── Render (matrix view) ─────────────────────────────────
+function renderWall() {
+  const grid = document.getElementById('checkinGrid');
+  const q = (document.getElementById('searchBox').value || '').trim().toLowerCase();
+
+  const dates = getDateRange();
+  const WEEKDAYS = ['日','一','二','三','四','五','六'];
+  const today = getToday();
+
+  const lookup = {};
+  for (const c of checkins) {
+    const name = c.name.trim();
+    if (!lookup[name]) lookup[name] = {};
+    lookup[name][c.date] = c;
+  }
+
+  let kidNames = [...new Set(checkins.map(c => c.name.trim()).filter(Boolean))];
+  if (q) kidNames = kidNames.filter(n => n.toLowerCase().includes(q));
+
+  const rangeDateKeys = new Set(dates.map(d => dateKey(d)));
+  kidNames = kidNames.filter(name => {
+    if (!lookup[name]) return false;
+    return Object.keys(lookup[name]).some(dk => rangeDateKeys.has(dk));
+  });
+
+  if (kidNames.length === 0) {
+    const label = currentFilter === 'week' ? '本周' : '本月';
+    grid.innerHTML = `
+      <div class="empty-state">
+        <span class="empty-icon">📭</span>
+        <h3>${q ? `找不到"${escapeHtml(q)}"的打卡记录` : `${label}还没有打卡记录`}</h3>
+        <p>${q ? '换个名字搜搜看' : '快来打卡吧！'}</p>
+      </div>`;
+    updateStats();
+    return;
+  }
+
+  kidNames.sort((a, b) => {
+    const aToday = lookup[a] && lookup[a][today];
+    const bToday = lookup[b] && lookup[b][today];
+    if (!!aToday !== !!bToday) return aToday ? -1 : 1;
+    const aLast = Math.max(...Object.values(lookup[a] || {}).map(c => new Date(c.date + 'T00:00').getTime()), 0);
+    const bLast = Math.max(...Object.values(lookup[b] || {}).map(c => new Date(c.date + 'T00:00').getTime()), 0);
+    return bLast - aLast;
+  });
+
+  const kidColors = ['#FF6B6B','#FFA94D','#69DB7C','#74C0FC','#B197FC','#F783AC'];
+
+  let html = '<div class="matrix-scroll"><table class="matrix-table"><thead><tr>';
+  html += '<th class="mth-name">小朋友</th>';
+  for (const d of dates) {
+    const dk = dateKey(d);
+    const isToday = dk === today;
+    html += `<th class="mth-date${isToday ? ' today-col' : ''}">
+      ${fmtDate(d)}<span class="mth-weekday">周${WEEKDAYS[d.getDay()]}</span>
+    </th>`;
+  }
+  html += '<th class="mth-summary">打卡</th>';
+  html += '</tr></thead><tbody>';
+
+  kidNames.forEach((name, ki) => {
+    const color = kidColors[ki % kidColors.length];
+    const kidRecs = lookup[name] || {};
+    const streak = calcStreak(name);
+    let periodCount = 0;
+    for (const d of dates) {
+      if (kidRecs[dateKey(d)]) periodCount++;
+    }
+
+    html += '<tr>';
+    html += `<td class="mtb-name"><div class="mtb-name-inner">
+      <div class="mtb-avatar" style="background:${color};">${escapeHtml(name[0])}</div>
+      <div class="mtb-name-info">
+        <div class="mtb-name-text">${escapeHtml(name)}</div>
+        <div class="mtb-streak">${streak > 1 ? '🔥连续'+streak+'天' : '📖'+periodCount+'次'}</div>
+      </div>
+    </div></td>`;
+
+    for (const d of dates) {
+      const dk = dateKey(d);
+      const c = kidRecs[dk];
+      const isToday = dk === today;
+
+      if (c) {
+        const stars = '🌟'.repeat(c.stars || 1);
+        const shortTitle = (c.title || '').length > 4 ? c.title.slice(0, 4) + '…' : (c.title || '');
+        const imgDot = c.img ? '<div class="cell-img-dot"></div>' : '';
+        html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
+          <div class="mtb-cell-inner" onclick="showCellTooltip(event, '${c.id}')">
+            <span class="cell-stars">${stars}</span>
+            ${shortTitle ? `<span class="cell-title">${escapeHtml(shortTitle)}</span>` : ''}
+            ${imgDot}
+          </div>
+        </td>`;
+      } else {
+        html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}"><div class="mtb-cell-inner"><span class="mtb-cell-empty">—</span></div></td>`;
+      }
+    }
+
+    html += `<td class="mtb-summary-cell">${periodCount}/${dates.length}</td>`;
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  html += `<div class="matrix-legend">
+    <span class="leg-item"><span class="leg-dot leg-done"></span> 已打卡</span>
+    <span class="leg-item"><span class="leg-dot leg-today"></span> 今天</span>
+    <span class="leg-item"><span class="leg-dot leg-empty"></span> 未打卡</span>
+    <span style="margin-left:auto;">👆 点击格子查看详情 / 删除</span>
+  </div>`;
+
+  grid.innerHTML = html;
+  updateStats();
+}
+
+// ── Cell tooltip ─────────────────────────────────────────
+let activeTooltip = null;
+function showCellTooltip(e, id) {
+  if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; }
+
+  const c = checkins.find(c => String(c.id) === String(id));
+  if (!c) return;
+
+  const stars = '🌟'.repeat(c.stars || 1) + '⭐'.repeat(Math.max(0, 5 - (c.stars || 1)));
+  const cell = e.currentTarget.closest('td');
+  if (!cell) return;
+
+  const tip = document.createElement('div');
+  tip.className = 'cell-tooltip';
+  tip.style.display = 'block';
+  tip.innerHTML = `
+    <div class="tt-stars">${stars}</div>
+    <div class="tt-title">${escapeHtml(c.title || '英语阅读打卡')}</div>
+    <div class="tt-date">📅 ${c.date}</div>
+    ${c.img ? `<img class="tt-img" src="${c.img}" alt="打卡图片" onclick="event.stopPropagation();openLightbox('${c.id}')">` : ''}
+    <div class="tt-delete" onclick="event.stopPropagation();deleteCheckin(${c.id});hideCellTooltip();">🗑 删除此记录</div>
+  `;
+  cell.appendChild(tip);
+  activeTooltip = tip;
+
+  setTimeout(() => {
+    const handler = (ev) => {
+      if (!tip.contains(ev.target) && ev.target !== cell && !cell.contains(ev.target)) {
+        hideCellTooltip();
+        document.removeEventListener('click', handler);
+      }
+    };
+    document.addEventListener('click', handler);
+  }, 10);
+}
+
+function hideCellTooltip() {
+  if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; }
+}
+
+// ── Stats ────────────────────────────────────────────────
+function updateStats() {
+  const todayCount = [...new Set(
+    checkins.filter(c => c.date === getToday()).map(c => c.name)
+  )].length;
+  document.getElementById('streakBadge').textContent = `🔥 今日已打卡 ${todayCount} 人`;
+}
+
+// ── Lightbox ─────────────────────────────────────────────
+function openLightbox(id) {
+  const c = checkins.find(c => String(c.id) === String(id));
+  if (!c || !c.img) return;
+  document.getElementById('lightboxImg').src = c.img;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeLightbox();
+});
+
+// ── Toasts ───────────────────────────────────────────────
+function showSuccess(name, title, stars) {
+  const overlay = document.getElementById('toastOverlay');
+  overlay.innerHTML = `
+    <div class="toast">
+      <span class="toast-emoji">🎉</span>
+      <h3>打卡成功！</h3>
+      <p>${escapeHtml(name)} 完成了「${escapeHtml(title)}」</p>
+      <p style="font-size:22px;margin-top:8px;">${'🌟'.repeat(stars)}</p>
+    </div>`;
+  overlay.style.display = 'flex';
+  spawnConfetti();
+  setTimeout(() => { overlay.style.display = 'none'; }, 2800);
+}
+
+function showWarn(msg) {
+  const el = document.createElement('div');
+  el.className = 'warn-toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2800);
+}
+
+// ── Confetti ─────────────────────────────────────────────
+function spawnConfetti() {
+  const colors = ['#FF6B6B','#FFA94D','#FFD43B','#69DB7C','#74C0FC','#B197FC','#F783AC'];
+  for (let i = 0; i < 50; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti-piece';
+    el.style.cssText = `
+      left:${Math.random()*100}%;
+      top:${-(Math.random()*20+10)}px;
+      width:${Math.random()*10+6}px;
+      height:${Math.random()*10+6}px;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      border-radius:${Math.random()>.5?'50%':'3px'};
+      animation-duration:${Math.random()*2+2}s;
+      animation-delay:${Math.random()*0.6}s;
+    `;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3200);
+  }
+}
+
+// ── Clear form ───────────────────────────────────────────
+function clearForm() {
+  document.getElementById('inputName').value  = '';
+  document.getElementById('inputNameHidden').value = '';
+  document.getElementById('inputTitle').value = '';
+  removeImg();
+  document.getElementById('alreadyCheckedNotice').classList.remove('visible');
+  document.getElementById('btnCheckIn').disabled = false;
+}
+
+// ── Keyboard ─────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'file') {
+    e.preventDefault();
+    doCheckIn();
+  }
+});
+
+// ── CSS for shake ────────────────────────────────────────
+const styleEl = document.createElement('style');
+styleEl.textContent = `@keyframes shakeField {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}`;
+document.head.appendChild(styleEl);
+
+// ── Init render ──────────────────────────────────────────
+// Already called in detectBackend().then() above
+</script>
+</body>
+</html>

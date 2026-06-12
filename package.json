@@ -1,0 +1,12 @@
+{
+  "name": "english-checkin-wall",
+  "version": "1.0.0",
+  "description": "英语阅读打卡墙 - 多人共享版",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
