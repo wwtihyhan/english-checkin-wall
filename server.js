@@ -1,153 +1,167 @@
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+
+// Bypass local proxy for Neon database connections (Node.js fetch respects proxy env vars)
+const NEON_HOST = '.aws.neon.tech';
+if (process.env.NO_PROXY) {
+  process.env.NO_PROXY += ',' + NEON_HOST;
+} else {
+  process.env.NO_PROXY = NEON_HOST;
+}
+process.env.no_proxy = process.env.NO_PROXY;
+
 const express = require('express');
-const fs = require('fs');
+const { neon } = require('@neondatabase/serverless');
 const path = require('path');
-const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const DATA_FILE = path.join(__dirname, 'data', 'checkins.json');
-const AUDIO_DIR = path.join(__dirname, 'data', 'audio');
+// ── Database: Neon PostgreSQL ──────────────────────────────
+let sql = null;
+let useDB = false;
 
-// Ensure directories and data file exist
-if (!fs.existsSync(AUDIO_DIR)) fs.mkdirSync(AUDIO_DIR, { recursive: true });
-if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, '[]');
+if (process.env.DATABASE_URL) {
+  sql = neon(process.env.DATABASE_URL);
+  useDB = true;
+}
 
-// Middleware: parse JSON bodies (up to 20MB for audio recordings)
+// ── Middleware ────────────────────────────────────────────
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ limit: '20mb', extended: true }));
-
-// Serve static frontend
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve uploaded audio recordings
-app.use('/api/audio', express.static(AUDIO_DIR));
+// ── API: Get all check-ins ────────────────────────────────
+app.get('/api/checkins', async (req, res) => {
+  if (!useDB) return res.json([]);
 
-// ── Helpers ──────────────────────────────────────────────
-function readData() {
   try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
+    const rows = await sql`SELECT * FROM checkins ORDER BY id DESC`;
+    res.json(rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      date: row.date,
+      title: row.title,
+      stars: row.stars,
+      colorIndex: row.color_index,
+      audio: row.audio_base64 ? `/api/audio/${row.id}` : null,
+      timestamp: row.timestamp
+    })));
+  } catch (err) {
+    console.error('GET error:', err.message);
+    res.status(500).json({ error: '查询失败，请稍后重试' });
   }
-}
-
-function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
-
-function saveAudio(base64Data) {
-  // Extract MIME and buffer from base64 data URL
-  const matches = base64Data.match(/^data:((audio|video)\/\w+);base64,(.+)$/);
-  if (!matches) return null;
-  const extMap = {
-    'audio/mpeg': 'mp3', 'audio/mp3': 'mp3', 'audio/wav': 'wav',
-    'audio/wave': 'wav', 'audio/x-wav': 'wav', 'audio/ogg': 'ogg',
-    'audio/webm': 'webm', 'audio/mp4': 'm4a', 'audio/m4a': 'm4a',
-    'audio/aac': 'aac', 'audio/x-m4a': 'm4a', 'video/webm': 'webm'
-  };
-  const ext = extMap[matches[1]] || 'webm';
-  const buffer = Buffer.from(matches[3], 'base64');
-  const filename = `${crypto.randomUUID()}.${ext}`;
-  const filepath = path.join(AUDIO_DIR, filename);
-  fs.writeFileSync(filepath, buffer);
-  return filename;
-}
-
-function deleteAudio(filename) {
-  if (!filename) return;
-  const filepath = path.join(AUDIO_DIR, filename);
-  if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-}
-
-// ── API Routes ───────────────────────────────────────────
-
-// Get all check-ins
-app.get('/api/checkins', (req, res) => {
-  const data = readData();
-  // Migrate old inline base64 audio to files
-  let migrated = false;
-  for (const c of data) {
-    if (c.audio && c.audio.startsWith('data:')) {
-      const filename = saveAudio(c.audio);
-      if (filename) {
-        c.audio = `/api/audio/${filename}`;
-        migrated = true;
-      }
-    }
-  }
-  if (migrated) writeData(data);
-  res.json(data);
 });
 
-// Create a check-in
-app.post('/api/checkins', (req, res) => {
-  const { name, date, title, stars, colorIndex, audio: audioData, timestamp } = req.body;
+// ── API: Create a check-in ────────────────────────────────
+app.post('/api/checkins', async (req, res) => {
+  const { name, date, title, stars = 1, colorIndex = 0, audio, timestamp } = req.body;
 
   if (!name || !date || !title) {
     return res.status(400).json({ error: '姓名、日期、标题不能为空' });
   }
 
-  const data = readData();
-
-  // One-per-day check
-  const alreadyDone = data.some(
-    c => c.name.trim().toLowerCase() === name.trim().toLowerCase() && c.date === date
-  );
-  if (alreadyDone) {
-    return res.status(409).json({ error: `${name} 今天已经打过卡了` });
+  if (!useDB) {
+    return res.status(503).json({ error: '数据库未连接' });
   }
 
-  // Save audio if provided
-  let audioUrl = null;
-  if (audioData && audioData.startsWith('data:')) {
-    const filename = saveAudio(audioData);
-    if (filename) audioUrl = `/api/audio/${filename}`;
+  try {
+    // One-per-day check
+    const existing = await sql`
+      SELECT id FROM checkins WHERE LOWER(name) = LOWER(${name.trim()}) AND date = ${date}
+    `;
+    if (existing.length > 0) {
+      return res.status(409).json({ error: `${name} 今天已经打过卡了` });
+    }
+
+    const result = await sql`
+      INSERT INTO checkins (name, date, title, stars, color_index, audio_base64, timestamp)
+      VALUES (${name.trim()}, ${date}, ${title.trim()}, ${stars}, ${colorIndex}, ${audio || null}, ${timestamp || new Date().toISOString()})
+      RETURNING id
+    `;
+
+    const id = result[0].id;
+    res.status(201).json({
+      id, name: name.trim(), date, title: title.trim(),
+      stars, colorIndex,
+      audio: audio ? `/api/audio/${id}` : null,
+      timestamp: timestamp || new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('POST error:', err.message);
+    res.status(500).json({ error: '打卡失败，请稍后重试' });
   }
-
-  const record = {
-    id: Date.now(),
-    name: name.trim(),
-    date,
-    title: title.trim(),
-    stars: stars || 1,
-    colorIndex: colorIndex || 0,
-    audio: audioUrl,
-    timestamp: timestamp || new Date().toISOString()
-  };
-
-  data.push(record);
-  writeData(data);
-
-  res.status(201).json(record);
 });
 
-// Delete a check-in
-app.delete('/api/checkins/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const data = readData();
-  const idx = data.findIndex(c => c.id === id);
+// ── API: Delete a check-in ────────────────────────────────
+app.delete('/api/checkins/:id', async (req, res) => {
+  if (!useDB) return res.status(503).json({ error: '数据库未连接' });
 
-  if (idx === -1) {
-    return res.status(404).json({ error: '记录不存在' });
+  try {
+    await sql`DELETE FROM checkins WHERE id = ${Number(req.params.id)}`;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('DELETE error:', err.message);
+    res.status(500).json({ error: '删除失败' });
   }
-
-  const record = data[idx];
-
-  // Delete associated audio file
-  if (record.audio && record.audio.startsWith('/api/audio/')) {
-    const filename = record.audio.replace('/api/audio/', '');
-    deleteAudio(filename);
-  }
-
-  data.splice(idx, 1);
-  writeData(data);
-
-  res.json({ success: true });
 });
 
-// ── Start server ─────────────────────────────────────────
+// ── API: Stream audio from DB ─────────────────────────────
+app.get('/api/audio/:id', async (req, res) => {
+  if (!useDB) return res.status(404).send('Not available');
+
+  try {
+    const result = await sql`SELECT audio_base64 FROM checkins WHERE id = ${Number(req.params.id)}`;
+    if (!result[0] || !result[0].audio_base64) {
+      return res.status(404).send('No audio');
+    }
+
+    const base64 = result[0].audio_base64;
+    const matches = base64.match(/^data:(audio\/\w+);base64,(.+)$/);
+    if (!matches) return res.status(400).send('Invalid audio');
+
+    const buffer = Buffer.from(matches[2], 'base64');
+    res.set('Content-Type', matches[1]);
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(buffer);
+  } catch (err) {
+    res.status(500).send('Audio error');
+  }
+});
+
+// ── Start server immediately, init DB in background ───────
 app.listen(PORT, () => {
-  console.log(`✅ 英语阅读打卡墙服务已启动: http://localhost:${PORT}`);
+  console.log(`✅ 英语阅读打卡墙已启动: http://localhost:${PORT}`);
+  if (useDB) {
+    console.log('   数据库: Neon PostgreSQL ☁️ (后台连接中...)');
+  } else {
+    console.log('   数据库: JSON 文件 (本地) 💾');
+  }
 });
+
+// Background: test connection and ensure table exists
+if (useDB) {
+  (async () => {
+    try {
+      console.log('🔌 正在连接 Neon...');
+      await sql`SELECT 1`;
+      console.log('✅ Neon 已连接');
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS checkins (
+          id SERIAL PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          date VARCHAR(10) NOT NULL,
+          title VARCHAR(500) NOT NULL,
+          stars INTEGER DEFAULT 1,
+          color_index INTEGER DEFAULT 0,
+          audio_base64 TEXT,
+          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `;
+      console.log('✅ 数据表已就绪');
+    } catch (err) {
+      console.error('❌ Neon 连接失败:', err.message);
+      useDB = false;
+    }
+  })();
+}
