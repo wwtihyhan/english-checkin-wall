@@ -632,29 +632,38 @@
   }
   .audio-preview-wrap .audio-remove-btn:hover { background: #FA5252; }
 
-  /* Cell audio dot */
-  .mtb-cell-inner .cell-audio-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--primary);
+  /* Cell audio badge */
+  .mtb-cell-inner .cell-audio-badge {
+    font-size: 10px;
+    background: #FFF5F5;
+    color: var(--primary);
+    padding: 1px 4px;
+    border-radius: 4px;
+    font-weight: 600;
     margin-top: 1px;
+    line-height: 1;
   }
 
   /* Tooltip audio player */
-  .cell-tooltip .tt-audio { margin-top: 6px; }
+  .cell-tooltip .tt-audio { margin-top: 8px; }
   .cell-tooltip .tt-audio audio {
-    width: 160px;
-    height: 32px;
+    width: 200px;
+    height: 36px;
     border-radius: 8px;
   }
   .cell-tooltip .tt-audio-tag {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--primary);
     font-weight: 600;
     display: flex;
     align-items: center;
     gap: 4px;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
+  }
+  .cell-tooltip .tt-audio-hint {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-top: 2px;
   }
 
   /* Toast */
@@ -1432,12 +1441,12 @@ function renderWall() {
       if (c) {
         const stars = '🌟'.repeat(c.stars || 1);
         const shortTitle = (c.title || '').length > 4 ? c.title.slice(0, 4) + '…' : (c.title || '');
-        const audioDot = c.audio ? '<div class="cell-audio-dot"></div>' : '';
+        const audioBadge = c.audio ? '<div class="cell-audio-badge">🎙️</div>' : '';
         html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
           <div class="mtb-cell-inner" onclick="showCellTooltip(event, '${c.id}')">
             <span class="cell-stars">${stars}</span>
             ${shortTitle ? `<span class="cell-title">${escapeHtml(shortTitle)}</span>` : ''}
-            ${audioDot}
+            ${audioBadge}
           </div>
         </td>`;
       } else {
@@ -1481,7 +1490,7 @@ function showCellTooltip(e, id) {
     <div class="tt-stars">${stars}</div>
     <div class="tt-title">${escapeHtml(c.title || '英语阅读打卡')}</div>
     <div class="tt-date">📅 ${c.date}</div>
-    ${c.audio ? `<div class="tt-audio"><div class="tt-audio-tag">🎙️ 录音</div><audio controls src="${c.audio}"></audio></div>` : ''}
+    ${c.audio ? `<div class="tt-audio"><div class="tt-audio-tag">🎙️ 朗读录音</div><audio controls src="${c.audio}"></audio><div class="tt-audio-hint">点击播放即可收听</div></div>` : ''}
     <div class="tt-delete" onclick="event.stopPropagation();deleteCheckin(${c.id});hideCellTooltip();">🗑 删除此记录</div>
   `;
   cell.appendChild(tip);
