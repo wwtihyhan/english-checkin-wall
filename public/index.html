@@ -552,37 +552,61 @@
   .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 6px; }
   .empty-state p { font-size: 14px; color: var(--text-light); }
 
-  /* Audio upload */
-  .audio-upload-area {
-    border: 2px dashed #E9ECEF;
-    border-radius: var(--radius-sm);
-    padding: 16px 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: #F8F9FA;
-    position: relative;
+  /* Audio recording */
+  .record-area {
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--text-light);
+    gap: 14px;
+    padding: 12px 16px;
+    background: #F8F9FA;
+    border-radius: var(--radius-sm);
+    border: 2px solid #E9ECEF;
+    transition: all 0.2s;
   }
-  .audio-upload-area:hover, .audio-upload-area.drag-over {
-    border-color: var(--primary);
+  .record-area.recording {
+    border-color: #FF6B6B;
     background: #FFF5F5;
+    animation: pulseRecord 1.5s infinite;
   }
-  .audio-upload-area input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
+  @keyframes pulseRecord {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,107,107,0.3); }
+    50% { box-shadow: 0 0 0 8px rgba(255,107,107,0); }
+  }
+
+  .record-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: var(--primary);
+    color: #FFF;
+    font-size: 15px;
+    font-weight: 600;
     cursor: pointer;
-    width: 100%;
-    height: 100%;
+    transition: all 0.2s;
+    white-space: nowrap;
   }
-  .audio-upload-area .audio-icon { font-size: 24px; }
-  .audio-upload-area .audio-text strong { color: var(--primary); }
+  .record-btn:hover { background: #FA5252; transform: scale(1.03); }
+  .record-btn:active { transform: scale(0.97); }
+  .record-btn.stopping {
+    background: #868E96;
+    pointer-events: none;
+  }
+  .record-btn .record-icon { font-size: 22px; }
+  .record-btn .record-text { font-size: 14px; }
+
+  .record-timer {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-light);
+    font-variant-numeric: tabular-nums;
+    min-width: 55px;
+  }
+  .record-area.recording .record-timer {
+    color: #FF6B6B;
+  }
 
   .audio-preview-wrap {
     display: none;
@@ -594,13 +618,6 @@
     border-radius: var(--radius-sm);
     border: 1px solid #FFC9C9;
   }
-  .audio-preview-wrap .audio-info {
-    flex: 1;
-    font-size: 13px;
-    color: var(--text);
-  }
-  .audio-preview-wrap .audio-info .audio-label { font-weight: 600; color: var(--primary); }
-  .audio-preview-wrap .audio-info .audio-meta { font-size: 12px; color: var(--text-light); }
   .audio-preview-wrap .audio-remove-btn {
     width: 28px; height: 28px;
     border-radius: 50%;
@@ -793,17 +810,16 @@
 
     <div class="form-row">
       <div class="form-group" style="flex: 1;">
-        <label>🎙️ 上传录音（可选）</label>
-        <div class="audio-upload-area" id="audioUploadArea">
-          <input type="file" id="inputAudio" accept="audio/*" onchange="onAudioSelected(event)">
-          <span class="audio-icon">🎙️</span>
-          <span class="audio-text">点击上传录音文件<br><strong>支持 MP3 / WAV / M4A</strong></span>
+        <label>🎙️ 录制朗读录音（可选）</label>
+        <div class="record-area" id="recordArea">
+          <button class="record-btn" id="recordBtn" onclick="startRecording()">
+            <span class="record-icon">🎙️</span>
+            <span class="record-text">开始录音</span>
+          </button>
+          <div class="record-timer" id="recordTimer">00:00</div>
         </div>
         <div class="audio-preview-wrap" id="audioPreviewWrap">
-          <div class="audio-info">
-            <div class="audio-label">📻 录音已上传</div>
-            <div class="audio-meta" id="audioMeta"></div>
-          </div>
+          <audio id="audioPreview" controls style="width:100%;height:36px;border-radius:8px;"></audio>
           <button class="audio-remove-btn" onclick="removeAudio()" title="移除录音">×</button>
         </div>
       </div>
@@ -1128,31 +1144,102 @@ function checkAlreadyDone() {
 
 // ── Check-in ─────────────────────────────────────────────
 
-// ── Audio upload ─────────────────────────────────────────
-function onAudioSelected(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    pendingAudioDataUrl = ev.target.result;
-    document.getElementById('audioMeta').textContent = `${file.name} · ${formatBytes(file.size)}`;
-    document.getElementById('audioPreviewWrap').style.display = 'flex';
-    document.getElementById('audioUploadArea').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
+// ── Audio recording ──────────────────────────────────────
+let mediaRecorder = null;
+let audioChunks = [];
+let recordingSeconds = 0;
+let recordingTimer = null;
+
+async function startRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') return;
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    recordingSeconds = 0;
+
+    mediaRecorder = new MediaRecorder(stream, {
+      mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus' : 'audio/webm'
+    });
+
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t => t.stop());
+
+      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        pendingAudioDataUrl = ev.target.result;
+        const audioEl = document.getElementById('audioPreview');
+        audioEl.src = URL.createObjectURL(blob);
+        document.getElementById('audioPreviewWrap').style.display = 'flex';
+      };
+      reader.readAsDataURL(blob);
+    };
+
+    mediaRecorder.start(200);
+    document.getElementById('recordArea').classList.add('recording');
+    document.getElementById('recordBtn').innerHTML = '<span class="record-icon">⏹</span><span class="record-text">停止录音</span>';
+
+    recordingTimer = setInterval(() => {
+      recordingSeconds++;
+      const m = String(Math.floor(recordingSeconds / 60)).padStart(2, '0');
+      const s = String(recordingSeconds % 60).padStart(2, '0');
+      document.getElementById('recordTimer').textContent = `${m}:${s}`;
+    }, 1000);
+
+    // Re-bind button to stop
+    const btn = document.getElementById('recordBtn');
+    btn.setAttribute('onclick', 'stopRecording()');
+
+  } catch (err) {
+    showWarn('无法访问麦克风: ' + (err.message || '请检查权限设置'));
+    console.error('Microphone error:', err);
+  }
+}
+
+function stopRecording() {
+  if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+
+  document.getElementById('recordBtn').classList.add('stopping');
+  document.getElementById('recordBtn').querySelector('.record-text').textContent = '保存中…';
+
+  mediaRecorder.stop();
+  clearInterval(recordingTimer);
+  recordingTimer = null;
+
+  document.getElementById('recordArea').classList.remove('recording');
+  document.getElementById('recordTimer').textContent = '00:00';
+
+  const btn = document.getElementById('recordBtn');
+  btn.classList.remove('stopping');
+  btn.innerHTML = '<span class="record-icon">🔄</span><span class="record-text">重新录制</span>';
+  btn.setAttribute('onclick', 'startRecording()');
 }
 
 function removeAudio() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+  }
+  clearInterval(recordingTimer);
+  recordingTimer = null;
   pendingAudioDataUrl = null;
-  document.getElementById('inputAudio').value = '';
+  audioChunks = [];
+  recordingSeconds = 0;
   document.getElementById('audioPreviewWrap').style.display = 'none';
-  document.getElementById('audioUploadArea').style.display = 'flex';
+  document.getElementById('recordArea').classList.remove('recording');
+  document.getElementById('recordTimer').textContent = '00:00';
+  const btn = document.getElementById('recordBtn');
+  btn.innerHTML = '<span class="record-icon">🎙️</span><span class="record-text">开始录音</span>';
+  btn.setAttribute('onclick', 'startRecording()');
 }
 
-function formatBytes(bytes) {
-  if (bytes < 1024) return bytes + ' B';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+function resetRecordUI() {
+  removeAudio();
 }
 
 // ── Check-in ─────────────────────────────────────────────
