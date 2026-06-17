@@ -666,6 +666,116 @@
     margin-top: 2px;
   }
 
+  /* Audio list panel */
+  .audio-list-panel {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    margin-top: 24px;
+    overflow: hidden;
+  }
+  .audio-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    transition: background 0.2s;
+    user-select: none;
+  }
+  .audio-list-header:hover { background: #FFF8F0; }
+  .audio-list-header .al-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .audio-list-header .al-count {
+    font-size: 13px;
+    background: var(--primary);
+    color: #FFF;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+  .audio-list-header .al-toggle {
+    font-size: 14px;
+    color: var(--text-light);
+    transition: transform 0.3s;
+  }
+  .audio-list-panel.collapsed .audio-list-header .al-toggle {
+    transform: rotate(-90deg);
+  }
+  .audio-list-body {
+    padding: 0 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all 0.3s;
+  }
+  .audio-list-panel.collapsed .audio-list-body { display: none; }
+
+  .audio-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #FFFAF5;
+    border-radius: var(--radius-sm);
+    border: 1px solid #FFE8CC;
+    transition: all 0.2s;
+  }
+  .audio-card:hover { border-color: var(--secondary); box-shadow: var(--shadow-sm); }
+  .audio-card .ac-avatar {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: #FFF;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .audio-card .ac-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .audio-card .ac-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .audio-card .ac-meta {
+    font-size: 12px;
+    color: var(--text-light);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .audio-card .ac-stars {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  .audio-card .ac-player {
+    flex-shrink: 0;
+  }
+  .audio-card .ac-player audio {
+    width: 180px;
+    height: 32px;
+    border-radius: 6px;
+  }
+  .audio-list-empty {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-light);
+    font-size: 14px;
+  }
+
   /* Toast */
   .toast-overlay {
     position: fixed;
@@ -859,6 +969,17 @@
     </div>
   </div>
 </div>
+
+  <!-- Audio list panel -->
+  <div class="audio-list-panel" id="audioListPanel">
+    <div class="audio-list-header" onclick="toggleAudioList()">
+      <div class="al-title">🎙️ 录音角 <span class="al-count" id="audioListCount">0</span></div>
+      <div class="al-toggle">▼</div>
+    </div>
+    <div class="audio-list-body" id="audioListBody">
+      <div class="audio-list-empty" id="audioListEmpty">还没有录音哦，快去打卡并录制一段朗读吧~</div>
+    </div>
+  </div>
 
 <!-- Toast overlay -->
 <div class="toast-overlay" id="toastOverlay" style="display:none;"></div>
@@ -1469,6 +1590,7 @@ function renderWall() {
 
   grid.innerHTML = html;
   updateStats();
+  renderAudioList();
 }
 
 // ── Cell tooltip ─────────────────────────────────────────
@@ -1509,6 +1631,58 @@ function showCellTooltip(e, id) {
 
 function hideCellTooltip() {
   if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; }
+}
+
+// ── Audio list panel ─────────────────────────────────────
+function renderAudioList() {
+  const body = document.getElementById('audioListBody');
+  const emptyEl = document.getElementById('audioListEmpty');
+  const countEl = document.getElementById('audioListCount');
+
+  // Filter checkins with audio, apply current filter (week/month)
+  const validDates = new Set(getDateRange().map(d => dateKey(d)));
+  let list = checkins.filter(c => c.audio && validDates.has(c.date));
+
+  // Sort by newest first
+  list.sort((a, b) => b.id - a.id);
+
+  countEl.textContent = list.length;
+
+  if (list.length === 0) {
+    emptyEl.style.display = 'block';
+    body.querySelectorAll('.audio-card').forEach(el => el.remove());
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+
+  // Render cards
+  let html = '';
+  list.forEach(c => {
+    const stars = '🌟'.repeat(c.stars || 1);
+    const initial = (c.name || '?')[0].toUpperCase();
+    html += `
+      <div class="audio-card">
+        <div class="ac-avatar">${initial}</div>
+        <div class="ac-info">
+          <div class="ac-name">${escapeHtml(c.name)}</div>
+          <div class="ac-meta">📖 ${escapeHtml(c.title || '英语阅读')} · 📅 ${c.date}</div>
+          <div class="ac-stars">${stars}</div>
+        </div>
+        <div class="ac-player">
+          <audio controls preload="metadata" src="${c.audio}"></audio>
+        </div>
+      </div>`;
+  });
+
+  // Replace cards, keep empty element
+  body.querySelectorAll('.audio-card').forEach(el => el.remove());
+  emptyEl.insertAdjacentHTML('afterend', html);
+}
+
+function toggleAudioList() {
+  const panel = document.getElementById('audioListPanel');
+  panel.classList.toggle('collapsed');
 }
 
 // ── Stats ────────────────────────────────────────────────
