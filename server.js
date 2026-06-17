@@ -128,6 +128,36 @@ app.get('/api/audio/:id', async (req, res) => {
   }
 });
 
+// ── Audio cleanup: delete recordings older than 2 days ─────
+async function cleanupExpiredAudio() {
+  if (!useDB) return;
+  try {
+    const result = await sql`
+      UPDATE checkins
+      SET audio_base64 = NULL
+      WHERE audio_base64 IS NOT NULL
+        AND timestamp < NOW() - INTERVAL '2 days'
+      RETURNING id
+    `;
+    if (result.length > 0) {
+      console.log(`🗑️  已清理 ${result.length} 条过期录音 (超过2天)`);
+    }
+  } catch (err) {
+    console.error('清理过期录音失败:', err.message);
+  }
+}
+
+// ⏰ 每小时检查一次
+const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+
+function startAudioCleanup() {
+  // 立即执行一次
+  cleanupExpiredAudio();
+  // 每小时定期执行
+  setInterval(cleanupExpiredAudio, CLEANUP_INTERVAL);
+  console.log('⏰ 录音自动清理已启动 (保留2天，每小时检查)');
+}
+
 // ── Start server immediately, init DB in background ───────
 app.listen(PORT, () => {
   console.log(`✅ 英语阅读打卡墙已启动: http://localhost:${PORT}`);
@@ -159,6 +189,9 @@ if (useDB) {
         )
       `;
       console.log('✅ 数据表已就绪');
+
+      // 启动录音自动清理
+      startAudioCleanup();
     } catch (err) {
       console.error('❌ Neon 连接失败:', err.message);
       useDB = false;
