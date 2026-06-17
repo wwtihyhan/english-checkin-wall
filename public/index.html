@@ -552,6 +552,94 @@
   .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 6px; }
   .empty-state p { font-size: 14px; color: var(--text-light); }
 
+  /* Audio upload */
+  .audio-upload-area {
+    border: 2px dashed #E9ECEF;
+    border-radius: var(--radius-sm);
+    padding: 16px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: #F8F9FA;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-light);
+  }
+  .audio-upload-area:hover, .audio-upload-area.drag-over {
+    border-color: var(--primary);
+    background: #FFF5F5;
+  }
+  .audio-upload-area input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+  .audio-upload-area .audio-icon { font-size: 24px; }
+  .audio-upload-area .audio-text strong { color: var(--primary); }
+
+  .audio-preview-wrap {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: #FFF5F5;
+    border-radius: var(--radius-sm);
+    border: 1px solid #FFC9C9;
+  }
+  .audio-preview-wrap .audio-info {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .audio-preview-wrap .audio-info .audio-label { font-weight: 600; color: var(--primary); }
+  .audio-preview-wrap .audio-info .audio-meta { font-size: 12px; color: var(--text-light); }
+  .audio-preview-wrap .audio-remove-btn {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #FF6B6B;
+    color: #FFF;
+    font-size: 16px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .audio-preview-wrap .audio-remove-btn:hover { background: #FA5252; }
+
+  /* Cell audio dot */
+  .mtb-cell-inner .cell-audio-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    margin-top: 1px;
+  }
+
+  /* Tooltip audio player */
+  .cell-tooltip .tt-audio { margin-top: 6px; }
+  .cell-tooltip .tt-audio audio {
+    width: 160px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  .cell-tooltip .tt-audio-tag {
+    font-size: 11px;
+    color: var(--primary);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+  }
+
   /* Toast */
   .toast-overlay {
     position: fixed;
@@ -703,6 +791,24 @@
       </div>
     </div>
 
+    <div class="form-row">
+      <div class="form-group" style="flex: 1;">
+        <label>🎙️ 上传录音（可选）</label>
+        <div class="audio-upload-area" id="audioUploadArea">
+          <input type="file" id="inputAudio" accept="audio/*" onchange="onAudioSelected(event)">
+          <span class="audio-icon">🎙️</span>
+          <span class="audio-text">点击上传录音文件<br><strong>支持 MP3 / WAV / M4A</strong></span>
+        </div>
+        <div class="audio-preview-wrap" id="audioPreviewWrap">
+          <div class="audio-info">
+            <div class="audio-label">📻 录音已上传</div>
+            <div class="audio-meta" id="audioMeta"></div>
+          </div>
+          <button class="audio-remove-btn" onclick="removeAudio()" title="移除录音">×</button>
+        </div>
+      </div>
+    </div>
+
     <div class="btn-row">
       <button class="btn btn-primary" id="btnCheckIn" onclick="doCheckIn()" disabled>⏳ 加载中…</button>
       <button class="btn btn-secondary" onclick="clearForm()">🔄 重置</button>
@@ -739,6 +845,7 @@ const POLL_INTERVAL = 3000; // 3 seconds auto-refresh
 
 let checkins = [];
 let currentFilter = 'week';
+let pendingAudioDataUrl = null;
 let nameDropdownIndex = -1;
 let pollTimer = null;
 let useApi = false; // true = server API, false = localStorage fallback
@@ -1020,6 +1127,35 @@ function checkAlreadyDone() {
 }
 
 // ── Check-in ─────────────────────────────────────────────
+
+// ── Audio upload ─────────────────────────────────────────
+function onAudioSelected(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    pendingAudioDataUrl = ev.target.result;
+    document.getElementById('audioMeta').textContent = `${file.name} · ${formatBytes(file.size)}`;
+    document.getElementById('audioPreviewWrap').style.display = 'flex';
+    document.getElementById('audioUploadArea').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeAudio() {
+  pendingAudioDataUrl = null;
+  document.getElementById('inputAudio').value = '';
+  document.getElementById('audioPreviewWrap').style.display = 'none';
+  document.getElementById('audioUploadArea').style.display = 'flex';
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// ── Check-in ─────────────────────────────────────────────
 async function doCheckIn() {
   const nameEl  = document.getElementById('inputName');
   const titleEl = document.getElementById('inputTitle');
@@ -1042,6 +1178,7 @@ async function doCheckIn() {
 
   const record = {
     name, date, title, stars, colorIndex,
+    audio: pendingAudioDataUrl || null,
     timestamp: new Date().toISOString()
   };
 
@@ -1050,6 +1187,7 @@ async function doCheckIn() {
     checkins.push(created);
     showSuccess(name, title, stars);
     titleEl.value = '';
+    removeAudio();
     titleEl.focus();
     checkAlreadyDone();
     renderWall();
@@ -1207,10 +1345,12 @@ function renderWall() {
       if (c) {
         const stars = '🌟'.repeat(c.stars || 1);
         const shortTitle = (c.title || '').length > 4 ? c.title.slice(0, 4) + '…' : (c.title || '');
+        const audioDot = c.audio ? '<div class="cell-audio-dot"></div>' : '';
         html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
           <div class="mtb-cell-inner" onclick="showCellTooltip(event, '${c.id}')">
             <span class="cell-stars">${stars}</span>
             ${shortTitle ? `<span class="cell-title">${escapeHtml(shortTitle)}</span>` : ''}
+            ${audioDot}
           </div>
         </td>`;
       } else {
@@ -1254,6 +1394,7 @@ function showCellTooltip(e, id) {
     <div class="tt-stars">${stars}</div>
     <div class="tt-title">${escapeHtml(c.title || '英语阅读打卡')}</div>
     <div class="tt-date">📅 ${c.date}</div>
+    ${c.audio ? `<div class="tt-audio"><div class="tt-audio-tag">🎙️ 录音</div><audio controls src="${c.audio}"></audio></div>` : ''}
     <div class="tt-delete" onclick="event.stopPropagation();deleteCheckin(${c.id});hideCellTooltip();">🗑 删除此记录</div>
   `;
   cell.appendChild(tip);
@@ -1331,6 +1472,7 @@ function clearForm() {
   document.getElementById('inputName').value  = '';
   document.getElementById('inputNameHidden').value = '';
   document.getElementById('inputTitle').value = '';
+  removeAudio();
   document.getElementById('alreadyCheckedNotice').classList.remove('visible');
   document.getElementById('btnCheckIn').disabled = false;
 }
