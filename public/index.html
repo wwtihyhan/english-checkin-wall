@@ -968,7 +968,6 @@
       <p>快来打卡吧！</p>
     </div>
   </div>
-</div>
 
   <!-- Audio list panel -->
   <div class="audio-list-panel" id="audioListPanel">
@@ -980,6 +979,7 @@
       <div class="audio-list-empty" id="audioListEmpty">还没有录音哦，快去打卡并录制一段朗读吧~</div>
     </div>
   </div>
+</div>
 
 <!-- Toast overlay -->
 <div class="toast-overlay" id="toastOverlay" style="display:none;"></div>
@@ -1639,9 +1639,8 @@ function renderAudioList() {
   const emptyEl = document.getElementById('audioListEmpty');
   const countEl = document.getElementById('audioListCount');
 
-  // Filter checkins with audio, apply current filter (week/month)
-  const validDates = new Set(getDateRange().map(d => dateKey(d)));
-  let list = checkins.filter(c => c.audio && validDates.has(c.date));
+  // Show ALL recordings, not just current week/month
+  let list = checkins.filter(c => c.audio);
 
   // Sort by newest first
   list.sort((a, b) => b.id - a.id);
