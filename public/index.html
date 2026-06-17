@@ -810,7 +810,7 @@
     </div>
 
     <div class="btn-row">
-      <button class="btn btn-primary" id="btnCheckIn" onclick="doCheckIn()">✅ 打卡签到</button>
+      <button class="btn btn-primary" id="btnCheckIn" onclick="doCheckIn()" disabled>⏳ 加载中…</button>
       <button class="btn btn-secondary" onclick="clearForm()">🔄 重置</button>
     </div>
   </div>
@@ -960,6 +960,10 @@ function stopPolling() {
 detectBackend().then(() => {
   fetchCheckins();
   if (useApi) startPolling();
+  // Enable the check-in button once JS is fully loaded
+  const btn = document.getElementById('btnCheckIn');
+  btn.disabled = false;
+  btn.textContent = '✅ 打卡签到';
 });
 
 // ── Helpers ──────────────────────────────────────────────
