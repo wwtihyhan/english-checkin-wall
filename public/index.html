@@ -207,60 +207,6 @@
     color: var(--text-light);
   }
 
-  /* Image upload area */
-  .img-upload-area {
-    border: 2px dashed #E9ECEF;
-    border-radius: var(--radius-sm);
-    padding: 20px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    background: #F8F9FA;
-    position: relative;
-  }
-  .img-upload-area:hover, .img-upload-area.drag-over {
-    border-color: var(--primary);
-    background: #FFF5F5;
-  }
-  .img-upload-area input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-    width: 100%;
-    height: 100%;
-  }
-  .img-upload-icon { font-size: 32px; margin-bottom: 6px; }
-  .img-upload-text { font-size: 14px; color: var(--text-light); }
-  .img-upload-text strong { color: var(--primary); }
-
-  /* Image preview */
-  .img-preview-wrap {
-    display: none;
-    position: relative;
-    margin-top: 10px;
-  }
-  .img-preview-wrap img {
-    width: 100%;
-    max-height: 200px;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    display: block;
-  }
-  .img-remove-btn {
-    position: absolute;
-    top: 8px; right: 8px;
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(0,0,0,0.55);
-    color: #FFF;
-    font-size: 16px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    transition: background 0.2s;
-  }
-  .img-remove-btn:hover { background: #FF6B6B; }
 
   /* Already checked badge on form */
   .already-checked-notice {
@@ -521,12 +467,6 @@
     white-space: nowrap;
     line-height: 1.2;
   }
-  .mtb-cell-inner .cell-img-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--primary);
-    margin-top: 1px;
-  }
   .mtb-cell-empty {
     color: #E9ECEF;
     font-size: 14px;
@@ -562,7 +502,6 @@
   .cell-tooltip .tt-stars { font-size: 18px; letter-spacing: 2px; }
   .cell-tooltip .tt-title { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 4px; }
   .cell-tooltip .tt-date { font-size: 11px; color: var(--text-light); margin-top: 2px; }
-  .cell-tooltip .tt-img { width: 100px; height: 80px; object-fit: cover; border-radius: 8px; margin-top: 6px; }
   .cell-tooltip .tt-delete {
     margin-top: 6px;
     font-size: 11px;
@@ -612,35 +551,6 @@
   .empty-icon { font-size: 64px; display: block; margin-bottom: 12px; animation: bounce 2s ease-in-out infinite; }
   .empty-state h3 { font-size: 18px; color: var(--text); margin-bottom: 6px; }
   .empty-state p { font-size: 14px; color: var(--text-light); }
-
-  /* Lightbox */
-  .lightbox {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.88);
-    z-index: 300;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    cursor: pointer;
-  }
-  .lightbox.open { display: flex; }
-  .lightbox img {
-    max-width: 90vw;
-    max-height: 85vh;
-    border-radius: var(--radius-lg);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    object-fit: contain;
-    cursor: default;
-  }
-  .lightbox-close {
-    position: absolute;
-    top: 20px; right: 24px;
-    font-size: 36px; color: #FFF;
-    cursor: pointer; font-weight: 300;
-    line-height: 1;
-  }
 
   /* Toast */
   .toast-overlay {
@@ -793,22 +703,6 @@
       </div>
     </div>
 
-    <!-- Image upload -->
-    <div class="form-row">
-      <div class="form-group" style="flex: 1;">
-        <label>📷 上传阅读照片（选填）</label>
-        <div class="img-upload-area" id="imgUploadArea">
-          <input type="file" id="inputImg" accept="image/*" onchange="onImgSelected(event)">
-          <div class="img-upload-icon">🖼️</div>
-          <div class="img-upload-text">点击或拖拽上传图片<br><strong>支持 JPG / PNG / GIF</strong></div>
-        </div>
-        <div class="img-preview-wrap" id="imgPreviewWrap">
-          <img id="imgPreview" src="" alt="预览图">
-          <button class="img-remove-btn" onclick="removeImg()" title="移除图片">×</button>
-        </div>
-      </div>
-    </div>
-
     <div class="btn-row">
       <button class="btn btn-primary" id="btnCheckIn" onclick="doCheckIn()" disabled>⏳ 加载中…</button>
       <button class="btn btn-secondary" onclick="clearForm()">🔄 重置</button>
@@ -835,12 +729,6 @@
   </div>
 </div>
 
-<!-- Lightbox -->
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
-  <span class="lightbox-close" onclick="closeLightbox()">×</span>
-  <img id="lightboxImg" src="" alt="" onclick="event.stopPropagation()">
-</div>
-
 <!-- Toast overlay -->
 <div class="toast-overlay" id="toastOverlay" style="display:none;"></div>
 
@@ -851,7 +739,6 @@ const POLL_INTERVAL = 3000; // 3 seconds auto-refresh
 
 let checkins = [];
 let currentFilter = 'week';
-let pendingImgDataUrl = null;
 let nameDropdownIndex = -1;
 let pollTimer = null;
 let useApi = false; // true = server API, false = localStorage fallback
@@ -1132,47 +1019,6 @@ function checkAlreadyDone() {
   }
 }
 
-// ── Image upload ─────────────────────────────────────────
-function onImgSelected(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    pendingImgDataUrl = ev.target.result;
-    document.getElementById('imgPreview').src = pendingImgDataUrl;
-    document.getElementById('imgPreviewWrap').style.display = 'block';
-    document.getElementById('imgUploadArea').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-}
-
-function removeImg() {
-  pendingImgDataUrl = null;
-  document.getElementById('inputImg').value = '';
-  document.getElementById('imgPreviewWrap').style.display = 'none';
-  document.getElementById('imgUploadArea').style.display = 'block';
-}
-
-// Drag-over style
-const uploadArea = document.getElementById('imgUploadArea');
-uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
-uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
-uploadArea.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadArea.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('image/')) {
-    const reader = new FileReader();
-    reader.onload = ev => {
-      pendingImgDataUrl = ev.target.result;
-      document.getElementById('imgPreview').src = pendingImgDataUrl;
-      document.getElementById('imgPreviewWrap').style.display = 'block';
-      document.getElementById('imgUploadArea').style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-  }
-});
-
 // ── Check-in ─────────────────────────────────────────────
 async function doCheckIn() {
   const nameEl  = document.getElementById('inputName');
@@ -1196,7 +1042,6 @@ async function doCheckIn() {
 
   const record = {
     name, date, title, stars, colorIndex,
-    img: pendingImgDataUrl || null,
     timestamp: new Date().toISOString()
   };
 
@@ -1205,7 +1050,6 @@ async function doCheckIn() {
     checkins.push(created);
     showSuccess(name, title, stars);
     titleEl.value = '';
-    removeImg();
     titleEl.focus();
     checkAlreadyDone();
     renderWall();
@@ -1363,12 +1207,10 @@ function renderWall() {
       if (c) {
         const stars = '🌟'.repeat(c.stars || 1);
         const shortTitle = (c.title || '').length > 4 ? c.title.slice(0, 4) + '…' : (c.title || '');
-        const imgDot = c.img ? '<div class="cell-img-dot"></div>' : '';
         html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
           <div class="mtb-cell-inner" onclick="showCellTooltip(event, '${c.id}')">
             <span class="cell-stars">${stars}</span>
             ${shortTitle ? `<span class="cell-title">${escapeHtml(shortTitle)}</span>` : ''}
-            ${imgDot}
           </div>
         </td>`;
       } else {
@@ -1412,7 +1254,6 @@ function showCellTooltip(e, id) {
     <div class="tt-stars">${stars}</div>
     <div class="tt-title">${escapeHtml(c.title || '英语阅读打卡')}</div>
     <div class="tt-date">📅 ${c.date}</div>
-    ${c.img ? `<img class="tt-img" src="${c.img}" alt="打卡图片" onclick="event.stopPropagation();openLightbox('${c.id}')">` : ''}
     <div class="tt-delete" onclick="event.stopPropagation();deleteCheckin(${c.id});hideCellTooltip();">🗑 删除此记录</div>
   `;
   cell.appendChild(tip);
@@ -1440,20 +1281,6 @@ function updateStats() {
   )].length;
   document.getElementById('streakBadge').textContent = `🔥 今日已打卡 ${todayCount} 人`;
 }
-
-// ── Lightbox ─────────────────────────────────────────────
-function openLightbox(id) {
-  const c = checkins.find(c => String(c.id) === String(id));
-  if (!c || !c.img) return;
-  document.getElementById('lightboxImg').src = c.img;
-  document.getElementById('lightbox').classList.add('open');
-}
-function closeLightbox() {
-  document.getElementById('lightbox').classList.remove('open');
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeLightbox();
-});
 
 // ── Toasts ───────────────────────────────────────────────
 function showSuccess(name, title, stars) {
@@ -1504,7 +1331,6 @@ function clearForm() {
   document.getElementById('inputName').value  = '';
   document.getElementById('inputNameHidden').value = '';
   document.getElementById('inputTitle').value = '';
-  removeImg();
   document.getElementById('alreadyCheckedNotice').classList.remove('visible');
   document.getElementById('btnCheckIn').disabled = false;
 }
