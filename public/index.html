@@ -1732,7 +1732,7 @@ function spawnConfetti() {
 // ── Download wall as image ───────────────────────────────
 async function downloadWallImage() {
   const grid = document.getElementById('checkinGrid');
-  if (!grid || !grid.querySelector('.mtb-table')) {
+  if (!grid || !grid.querySelector('.matrix-table')) {
     showWarn('打卡墙还没有记录，无法下载');
     return;
   }
