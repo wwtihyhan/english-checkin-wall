@@ -9,4 +9,4 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_S5xAnYGJL4tH@ep-shy-tooth-atj1kwma-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require
+        value: postgresql://neondb_owner:npg_S5xAnYGJL4tH@ep-shy-tooth-atj1kwma-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=verify-full
