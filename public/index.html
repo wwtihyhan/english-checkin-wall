@@ -454,6 +454,18 @@
     letter-spacing: 1px;
     line-height: 1;
   }
+  .mtb-cell-inner .cell-view-btn {
+    font-size: 10px;
+    color: var(--primary);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    font-weight: 600;
+    line-height: 1;
+    transition: opacity 0.15s;
+  }
+  .mtb-cell-inner .cell-view-btn:hover { opacity: 0.7; }
   .mtb-cell-empty {
     color: #E9ECEF;
     font-size: 14px;
@@ -1562,8 +1574,9 @@ function renderWall() {
         const stars = '🌟'.repeat(c.stars || 1);
         const audioBadge = c.audio ? '<div class="cell-audio-badge">🎙️</div>' : '';
         html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
-          <div class="mtb-cell-inner" onclick="showCellTooltip(event, '${c.id}')">
-            <span class="cell-stars">${stars}</span>
+          <div class="mtb-cell-inner">
+            <span class="cell-stars" onclick="showCellTooltip(event, '${c.id}')">${stars}</span>
+            <button class="cell-view-btn" onclick="showCellTooltip(event, '${c.id}')">查看</button>
             ${audioBadge}
           </div>
         </td>`;
