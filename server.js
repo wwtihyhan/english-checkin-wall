@@ -126,7 +126,10 @@ app.delete('/api/checkins/:id', async (req, res) => {
   if (!dbReady) return res.status(503).json({ error: '数据库未连接' });
 
   try {
-    await pool.query('DELETE FROM checkins WHERE id = $1', [Number(req.params.id)]);
+    const id = Number(req.params.id);
+    // Clear audio data first before deleting the record
+    await pool.query('UPDATE checkins SET audio_base64 = NULL WHERE id = $1', [id]);
+    await pool.query('DELETE FROM checkins WHERE id = $1', [id]);
     res.json({ success: true });
   } catch (err) {
     console.error('DELETE error:', err.message);
