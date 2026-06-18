@@ -932,7 +932,6 @@
 
     <div class="btn-row">
       <button class="btn btn-primary" id="btnCheckIn" onclick="doCheckIn()" disabled>⏳ 加载中…</button>
-      <button class="btn btn-secondary" onclick="clearForm()">🔄 重置</button>
     </div>
   </div>
 
@@ -1712,16 +1711,6 @@ function spawnConfetti() {
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3200);
   }
-}
-
-// ── Clear form ───────────────────────────────────────────
-function clearForm() {
-  document.getElementById('inputName').value  = '';
-  document.getElementById('inputNameHidden').value = '';
-  document.getElementById('inputTitle').value = '';
-  removeAudio();
-  document.getElementById('alreadyCheckedNotice').classList.remove('visible');
-  document.getElementById('btnCheckIn').disabled = false;
 }
 
 // ── Keyboard ─────────────────────────────────────────────
