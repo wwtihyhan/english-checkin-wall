@@ -148,11 +148,14 @@ app.get('/api/audio/:id', async (req, res) => {
     }
 
     const base64 = rows[0].audio_base64;
-    const matches = base64.match(/^data:(audio\/\w+);base64,(.+)$/);
-    if (!matches) return res.status(400).send('Invalid audio');
+    // MediaRecorder produces data:[mime];codecs=xxx;base64,... — split, don't regex
+    const idx = base64.indexOf(';base64,');
+    if (idx === -1) return res.status(400).send('Invalid audio');
 
-    const buffer = Buffer.from(matches[2], 'base64');
-    res.set('Content-Type', matches[1]);
+    const mimeType = base64.substring(5, idx);           // strip "data:"
+    const rawData = base64.substring(idx + 8);           // after ";base64,"
+    const buffer = Buffer.from(rawData, 'base64');
+    res.set('Content-Type', mimeType);
     res.set('Cache-Control', 'public, max-age=86400');
     res.send(buffer);
   } catch (err) {
