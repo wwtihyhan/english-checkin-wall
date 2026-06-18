@@ -14,18 +14,20 @@ let dbReady = false;
 let pool = null;
 let dbConnectError = null; // diagnostic: last connection error
 
-if (process.env.DATABASE_URL) {
-  // Remove channel_binding=require — pg uses standard TCP+TLS which is already secure
-  const dbUrl = process.env.DATABASE_URL.replace(/&?channel_binding=require/g, '');
-  console.log(`🔍 DATABASE_URL 已配置 (${dbUrl.length} 字符)`);
-  pool = new Pool({
-    connectionString: dbUrl,
-    ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 15000,
-  });
-} else {
-  console.log('⚠️  未找到 DATABASE_URL 环境变量');
-}
+// Neon connection string (render.yaml env vars not auto-applied for manual services)
+const NEON_URL = 'postgresql://neondb_owner:npg_S5xAnYGJL4tH@ep-shy-tooth-atj1kwma-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=verify-full';
+
+const dbUrlRaw = process.env.DATABASE_URL || NEON_URL;
+// Remove channel_binding=require — pg uses standard TCP+TLS which is already secure
+const dbUrl = dbUrlRaw.replace(/&?channel_binding=require/g, '');
+const fromEnv = !!process.env.DATABASE_URL;
+console.log(`🔍 DATABASE_URL: ${fromEnv ? '环境变量' : '内置备用'} (${dbUrl.length} 字符)`);
+
+pool = new Pool({
+  connectionString: dbUrl,
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 15000,
+});
 
 // ── Middleware ────────────────────────────────────────────
 app.use(express.json({ limit: '20mb' }));
@@ -38,6 +40,7 @@ app.get('/api/health', async (req, res) => {
     dbReady,
     hasPool: !!pool,
     hasDbUrl: !!process.env.DATABASE_URL,
+    hasFallback: true,
     dbUrlLen: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0,
     error: dbConnectError,
     nodeEnv: process.env.NODE_ENV || 'development',
@@ -185,41 +188,39 @@ function startAudioCleanup() {
 
 // ── Start server: connect DB first, then listen ────────────
 async function startServer() {
-  if (pool) {
-    try {
-      console.log('🔌 正在连接 Neon (pg TCP)...');
-      const client = await pool.connect();
-      const { rows } = await client.query('SELECT 1 AS ok');
-      client.release();
-      console.log('✅ Neon 已连接:', rows[0].ok === 1 ? 'OK' : '?');
+  try {
+    console.log('🔌 正在连接 Neon (pg TCP)...');
+    const client = await pool.connect();
+    const { rows } = await client.query('SELECT 1 AS ok');
+    client.release();
+    console.log('✅ Neon 已连接:', rows[0].ok === 1 ? 'OK' : '?');
 
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS checkins (
-          id SERIAL PRIMARY KEY,
-          name VARCHAR(255) NOT NULL,
-          date VARCHAR(10) NOT NULL,
-          title VARCHAR(500) NOT NULL,
-          stars INTEGER DEFAULT 1,
-          color_index INTEGER DEFAULT 0,
-          audio_base64 TEXT,
-          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-      console.log('✅ 数据表已就绪');
-      dbReady = true;
-      dbConnectError = null;
-      startAudioCleanup();
-    } catch (err) {
-      dbConnectError = `[${err.code || 'UNKNOWN'}] ${err.message}`;
-      console.error('❌ Neon 连接失败:', dbConnectError);
-      if (err.stack) console.error('   Stack:', err.stack.split('\n').slice(0, 3).join('\n'));
-      console.log('⚠️  降级为 JSON 文件模式 (dbReady=false)');
-    }
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS checkins (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        date VARCHAR(10) NOT NULL,
+        title VARCHAR(500) NOT NULL,
+        stars INTEGER DEFAULT 1,
+        color_index INTEGER DEFAULT 0,
+        audio_base64 TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log('✅ 数据表已就绪');
+    dbReady = true;
+    dbConnectError = null;
+    startAudioCleanup();
+  } catch (err) {
+    dbConnectError = `[${err.code || 'UNKNOWN'}] ${err.message}`;
+    console.error('❌ Neon 连接失败:', dbConnectError);
+    if (err.stack) console.error('   Stack:', err.stack.split('\n').slice(0, 3).join('\n'));
+    console.log('⚠️  降级运行 (dbReady=false)');
   }
 
   app.listen(PORT, () => {
     console.log(`✅ 英语阅读打卡墙已启动: http://localhost:${PORT}`);
-    console.log(`   数据库: ${dbReady ? 'Neon PostgreSQL ☁️ (pg)' : 'JSON 文件 (本地降级) 💾'}`);
+    console.log(`   数据库: ${dbReady ? 'Neon PostgreSQL ☁️ (pg)' : '未连接 ⚠️ 内置备用串已加载'}`);
   });
 }
 
