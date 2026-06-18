@@ -1100,10 +1100,8 @@ function stopPolling() {
 detectBackend().then(() => {
   fetchCheckins();
   if (useApi) startPolling();
-  // Enable the check-in button once JS is fully loaded
-  const btn = document.getElementById('btnCheckIn');
-  btn.disabled = false;
-  btn.textContent = '✅ 打卡签到';
+  // 按钮状态由 updateCheckInButton() 统一管理（需录音后才能打卡）
+  updateCheckInButton();
 });
 
 // ── Helpers ──────────────────────────────────────────────
@@ -1259,17 +1257,39 @@ function checkAlreadyDone() {
   const name = document.getElementById('inputName').value.trim();
   const date = getToday();
   const notice = document.getElementById('alreadyCheckedNotice');
-  const btn    = document.getElementById('btnCheckIn');
 
   if (name && hasCheckedIn(name, date)) {
     document.getElementById('alreadyCheckedText').textContent =
       `${name} 今天已经打过卡啦！每天只能打一次哦 🌟`;
     notice.classList.add('visible');
-    btn.disabled = true;
   } else {
     notice.classList.remove('visible');
-    btn.disabled = false;
   }
+  updateCheckInButton();
+}
+
+function updateCheckInButton() {
+  const btn = document.getElementById('btnCheckIn');
+  const name = document.getElementById('inputName').value.trim();
+  const date = getToday();
+
+  // 今日已打卡 → 禁用
+  if (name && hasCheckedIn(name, date)) {
+    btn.disabled = true;
+    btn.textContent = '✅ 今日已打卡';
+    return;
+  }
+
+  // 没有录音 → 禁用
+  if (!pendingAudioDataUrl) {
+    btn.disabled = true;
+    btn.textContent = '🎙️ 请先录音再打卡';
+    return;
+  }
+
+  // 录音就绪 → 启用
+  btn.disabled = false;
+  btn.textContent = '✅ 打卡签到';
 }
 
 // ── Check-in ─────────────────────────────────────────────
@@ -1307,6 +1327,7 @@ async function startRecording() {
         const audioEl = document.getElementById('audioPreview');
         audioEl.src = URL.createObjectURL(blob);
         document.getElementById('audioPreviewWrap').style.display = 'flex';
+        updateCheckInButton(); // 录音完成，启用打卡按钮
       };
       reader.readAsDataURL(blob);
     };
@@ -1366,6 +1387,7 @@ function removeAudio() {
   const btn = document.getElementById('recordBtn');
   btn.innerHTML = '<span class="record-icon">🎙️</span><span class="record-text">开始录音</span>';
   btn.setAttribute('onclick', 'startRecording()');
+  updateCheckInButton(); // 移除录音后，禁用打卡按钮
 }
 
 function resetRecordUI() {
@@ -1379,6 +1401,11 @@ async function doCheckIn() {
   const date  = getToday();
 
   if (!name) { shake(nameEl); return; }
+
+  if (!pendingAudioDataUrl) {
+    showWarn('请先录音再打卡 🎙️');
+    return;
+  }
 
   if (hasCheckedIn(name, date)) {
     showWarn(`${name} 今天已打卡，明天再来吧 🌟`);
