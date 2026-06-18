@@ -1737,6 +1737,30 @@ async function downloadWallImage() {
     return;
   }
 
+  const matrixWrap = grid;
+  const matrixScroll = grid.querySelector('.matrix-scroll');
+
+  // Save original styles
+  const origStyles = {
+    wrapOverflow: matrixWrap.style.overflow || '',
+    wrapWidth: matrixWrap.style.width || '',
+    wrapMaxWidth: matrixWrap.style.maxWidth || '',
+    scrollOverflow: matrixScroll ? (matrixScroll.style.overflow || matrixScroll.style.overflowX || '') : '',
+    scrollWidth: matrixScroll ? (matrixScroll.style.width || '') : '',
+    scrollMaxWidth: matrixScroll ? (matrixScroll.style.maxWidth || '') : '',
+  };
+
+  // Expand to full width so html2canvas captures entire table
+  matrixWrap.style.overflow = 'visible';
+  matrixWrap.style.width = 'max-content';
+  matrixWrap.style.maxWidth = 'none';
+  if (matrixScroll) {
+    matrixScroll.style.overflow = 'visible';
+    matrixScroll.style.overflowX = 'visible';
+    matrixScroll.style.width = 'max-content';
+    matrixScroll.style.maxWidth = 'none';
+  }
+
   try {
     const canvas = await html2canvas(grid, {
       backgroundColor: '#FFFFFF',
@@ -1750,6 +1774,16 @@ async function downloadWallImage() {
     link.click();
   } catch (e) {
     showWarn('图片生成失败: ' + e.message);
+  }
+
+  // Restore original styles
+  matrixWrap.style.overflow = origStyles.wrapOverflow;
+  matrixWrap.style.width = origStyles.wrapWidth;
+  matrixWrap.style.maxWidth = origStyles.wrapMaxWidth;
+  if (matrixScroll) {
+    matrixScroll.style.overflow = origStyles.scrollOverflow;
+    matrixScroll.style.width = origStyles.scrollWidth;
+    matrixScroll.style.maxWidth = origStyles.scrollMaxWidth;
   }
 }
 
