@@ -475,43 +475,71 @@
     font-weight: 300;
   }
 
-  /* Cell tooltip on click */
-  .cell-tooltip {
-    display: none;
-    position: absolute;
-    bottom: calc(100% + 8px);
-    left: 50%;
-    transform: translateX(-50%);
+  /* Record detail modal */
+  .record-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 600;
+    animation: confirmIn 0.2s ease-out;
+  }
+  .record-modal .rm-card {
     background: #FFF;
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
-    padding: 12px 14px;
-    z-index: 20;
-    white-space: nowrap;
-    min-width: 150px;
+    border-radius: var(--radius-lg);
+    padding: 32px 36px 28px;
     text-align: center;
-    pointer-events: none;
-    border: 2px solid #F1F3F5;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+    max-width: 400px;
+    width: 92%;
+    animation: confirmPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .cell-tooltip::after {
-    content: '';
-    position: absolute;
-    top: 100%; left: 50%;
-    transform: translateX(-50%);
-    border: 6px solid transparent;
-    border-top-color: #FFF;
+  .record-modal .rm-avatar {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 24px; font-weight: 800; color: #FFF;
+    margin-bottom: 12px;
   }
-  .cell-tooltip .tt-stars { font-size: 18px; letter-spacing: 2px; }
-  .cell-tooltip .tt-title { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 4px; }
-  .cell-tooltip .tt-date { font-size: 11px; color: var(--text-light); margin-top: 2px; }
-  .cell-tooltip .tt-delete {
-    margin-top: 6px;
-    font-size: 11px;
-    color: #FF6B6B;
+  .record-modal .rm-name { font-size: 20px; font-weight: 800; color: var(--text); }
+  .record-modal .rm-date { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+  .record-modal .rm-title { font-size: 15px; font-weight: 700; color: var(--purple); margin-top: 10px; }
+  .record-modal .rm-stars { font-size: 22px; letter-spacing: 3px; margin-top: 8px; }
+  .record-modal .rm-divider {
+    height: 1px;
+    background: #F1F3F5;
+    margin: 20px 0;
+  }
+  .record-modal .rm-audio {
+    background: #F8F9FA;
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .record-modal .rm-audio .rm-audio-label { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+  .record-modal .rm-audio audio { width: 100%; max-width: 100%; }
+  .record-modal .rm-actions { display: flex; gap: 12px; margin-top: 24px; }
+  .record-modal .rm-btn {
+    flex: 1;
+    padding: 12px 0;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
-    pointer-events: auto;
-    font-weight: 600;
+    border: none;
+    transition: transform 0.15s, box-shadow 0.15s;
   }
+  .record-modal .rm-btn:active { transform: scale(0.96); }
+  .record-modal .rm-btn-close {
+    background: #F1F3F5;
+    color: var(--text-light);
+  }
+  .record-modal .rm-btn-close:hover { background: #E9ECEF; }
+  .record-modal .rm-btn-delete {
+    background: #FF6B6B;
+    color: #FFF;
+    box-shadow: 0 4px 14px rgba(255,107,107,0.35);
+  }
+  .record-modal .rm-btn-delete:hover { background: #FA5252; box-shadow: 0 6px 20px rgba(255,107,107,0.45); }
 
   /* Summary cell */
   .mtb-summary-cell {
@@ -644,28 +672,6 @@
     font-weight: 600;
     margin-top: 1px;
     line-height: 1;
-  }
-
-  /* Tooltip audio player */
-  .cell-tooltip .tt-audio { margin-top: 8px; }
-  .cell-tooltip .tt-audio audio {
-    width: 200px;
-    height: 36px;
-    border-radius: 8px;
-  }
-  .cell-tooltip .tt-audio-tag {
-    font-size: 12px;
-    color: var(--primary);
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    margin-bottom: 4px;
-  }
-  .cell-tooltip .tt-audio-hint {
-    font-size: 11px;
-    color: var(--text-light);
-    margin-top: 2px;
   }
 
   /* Audio list panel */
@@ -1700,31 +1706,36 @@ function showCellTooltip(e, id) {
   if (!c) return;
 
   const stars = '🌟'.repeat(c.stars || 1) + '⭐'.repeat(Math.max(0, 5 - (c.stars || 1)));
-  const cell = e.currentTarget.closest('td');
-  if (!cell) return;
+  const initial = (c.name || '?')[0].toUpperCase();
+  const avatarColors = ['#FF6B6B','#FFA94D','#FFD43B','#69DB7C','#4DABF7','#B197FC'];
+  const avatarBg = avatarColors[(c.colorIndex || 0) % avatarColors.length];
 
-  const tip = document.createElement('div');
-  tip.className = 'cell-tooltip';
-  tip.style.display = 'block';
-  tip.innerHTML = `
-    <div class="tt-stars">${stars}</div>
-    <div class="tt-title">${escapeHtml(c.title || '英语阅读打卡')}</div>
-    <div class="tt-date">📅 ${c.date}</div>
-    ${c.audio ? `<div class="tt-audio"><div class="tt-audio-tag">🎙️ 朗读录音</div><audio controls src="${c.audio}"></audio><div class="tt-audio-hint">点击播放即可收听</div></div>` : ''}
-    <div class="tt-delete" onclick="event.stopPropagation();deleteCheckin(${c.id});hideCellTooltip();">🗑 删除此记录</div>
-  `;
-  cell.appendChild(tip);
-  activeTooltip = tip;
+  const modal = document.createElement('div');
+  modal.className = 'record-modal';
+  modal.innerHTML = `
+    <div class="rm-card" onclick="event.stopPropagation()">
+      <div class="rm-avatar" style="background:${avatarBg}">${escapeHtml(initial)}</div>
+      <div class="rm-name">${escapeHtml(c.name)}</div>
+      <div class="rm-date">📅 ${escapeHtml(c.date)}</div>
+      <div class="rm-title">📖 ${escapeHtml(c.title || '英语阅读打卡')}</div>
+      <div class="rm-stars">${stars}</div>
+      ${c.audio ? `
+        <div class="rm-divider"></div>
+        <div class="rm-audio">
+          <div class="rm-audio-label">🎙️ 朗读录音</div>
+          <audio controls src="${c.audio}" preload="metadata"></audio>
+        </div>` : ''}
+      <div class="rm-actions">
+        <button class="rm-btn rm-btn-close" onclick="hideCellTooltip()">关闭</button>
+        <button class="rm-btn rm-btn-delete" onclick="event.stopPropagation();deleteCheckin(${c.id});hideCellTooltip();">🗑 删除此记录</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  activeTooltip = modal;
 
-  setTimeout(() => {
-    const handler = (ev) => {
-      if (!tip.contains(ev.target) && ev.target !== cell && !cell.contains(ev.target)) {
-        hideCellTooltip();
-        document.removeEventListener('click', handler);
-      }
-    };
-    document.addEventListener('click', handler);
-  }, 10);
+  modal.addEventListener('click', (ev) => {
+    if (ev.target === modal) hideCellTooltip();
+  });
 }
 
 function hideCellTooltip() {
