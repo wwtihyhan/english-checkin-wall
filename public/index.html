@@ -929,13 +929,6 @@
       </div>
     </div>
     <div class="form-row">
-      <div class="form-group" style="flex: 2;">
-        <label>📖 打卡标题（今天读了什么？）</label>
-        <input type="text" id="inputTitle" placeholder="例如：牛津树 Level 3 — The Snowman" autocomplete="off">
-      </div>
-    </div>
-
-    <div class="form-row">
       <div class="form-group" style="flex: 1;">
         <label>🎙️ 录制朗读录音（可选）</label>
         <div class="record-area" id="recordArea">
@@ -1384,14 +1377,10 @@ function resetRecordUI() {
 // ── Check-in ─────────────────────────────────────────────
 async function doCheckIn() {
   const nameEl  = document.getElementById('inputName');
-  const titleEl = document.getElementById('inputTitle');
-
   const name  = nameEl.value.trim();
   const date  = getToday();
-  const title = titleEl.value.trim();
 
   if (!name) { shake(nameEl); return; }
-  if (!title) { shake(titleEl); return; }
 
   if (hasCheckedIn(name, date)) {
     showWarn(`${name} 今天已打卡，明天再来吧 🌟`);
@@ -1403,7 +1392,7 @@ async function doCheckIn() {
   const colorIndex = allByKid.length % CARD_COLORS;
 
   const record = {
-    name, date, title, stars, colorIndex,
+    name, date, title: '英语阅读打卡', stars, colorIndex,
     audio: pendingAudioDataUrl || null,
     timestamp: new Date().toISOString()
   };
@@ -1411,10 +1400,8 @@ async function doCheckIn() {
   try {
     const created = await createCheckin(record);
     checkins.push(created);
-    showSuccess(name, title, stars);
-    titleEl.value = '';
+    showSuccess(name, stars);
     removeAudio();
-    titleEl.focus();
     checkAlreadyDone();
     renderWall();
   } catch (e) {
@@ -1702,13 +1689,13 @@ function updateStats() {
 }
 
 // ── Toasts ───────────────────────────────────────────────
-function showSuccess(name, title, stars) {
+function showSuccess(name, stars) {
   const overlay = document.getElementById('toastOverlay');
   overlay.innerHTML = `
     <div class="toast">
       <span class="toast-emoji">🎉</span>
       <h3>打卡成功！</h3>
-      <p>${escapeHtml(name)} 完成了「${escapeHtml(title)}」</p>
+      <p>${escapeHtml(name)} 完成英语阅读打卡</p>
       <p style="font-size:22px;margin-top:8px;">${'🌟'.repeat(stars)}</p>
     </div>`;
   overlay.style.display = 'flex';

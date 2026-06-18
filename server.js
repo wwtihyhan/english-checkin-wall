@@ -84,8 +84,8 @@ app.get('/api/checkins', async (req, res) => {
 app.post('/api/checkins', async (req, res) => {
   const { name, date, title, stars = 1, colorIndex = 0, audio, timestamp } = req.body;
 
-  if (!name || !date || !title) {
-    return res.status(400).json({ error: '姓名、日期、标题不能为空' });
+  if (!name || !date) {
+    return res.status(400).json({ error: '姓名和日期不能为空' });
   }
 
   if (!dbReady) {
@@ -105,7 +105,7 @@ app.post('/api/checkins', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO checkins (name, date, title, stars, color_index, audio_base64, timestamp)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [name.trim(), date, title.trim(), stars, colorIndex, audio || null, timestamp || new Date().toISOString()]
+      [name.trim(), date, (title || '英语阅读打卡').trim(), stars, colorIndex, audio || null, timestamp || new Date().toISOString()]
     );
 
     const id = result.rows[0].id;
