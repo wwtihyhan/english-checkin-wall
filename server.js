@@ -1,32 +1,30 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
-// Bypass local proxy for Neon database connections (Node.js fetch respects proxy env vars)
-const NEON_HOST = '.aws.neon.tech';
-if (process.env.NO_PROXY) {
-  process.env.NO_PROXY += ',' + NEON_HOST;
-} else {
-  process.env.NO_PROXY = NEON_HOST;
-}
-process.env.no_proxy = process.env.NO_PROXY;
-
 const express = require('express');
-const { neon } = require('@neondatabase/serverless');
+const { Pool } = require('pg');
 const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Database: Neon PostgreSQL ──────────────────────────────
-let sql = null;
+// ── Database: Neon PostgreSQL via pg (TCP, not serverless) ─
 let dbReady = false;
+let pool = null;
 
 if (process.env.DATABASE_URL) {
-  sql = neon(process.env.DATABASE_URL);
+  // Remove channel_binding=require — pg uses standard TCP+TLS which is already secure
+  const dbUrl = process.env.DATABASE_URL.replace(/&?channel_binding=require/g, '');
+  pool = new Pool({
+    connectionString: dbUrl,
+    ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 10000,
+  });
 }
 
 // ── Middleware ────────────────────────────────────────────
 app.use(express.json({ limit: '20mb' }));
-app.use(express.urlencoded({ limit: '20mb', extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── API: Get all check-ins ────────────────────────────────
@@ -34,7 +32,7 @@ app.get('/api/checkins', async (req, res) => {
   if (!dbReady) return res.json([]);
 
   try {
-    const rows = await sql`SELECT * FROM checkins ORDER BY id DESC`;
+    const { rows } = await pool.query('SELECT * FROM checkins ORDER BY id DESC');
     res.json(rows.map(row => ({
       id: row.id,
       name: row.name,
@@ -60,25 +58,26 @@ app.post('/api/checkins', async (req, res) => {
   }
 
   if (!dbReady) {
-    return res.status(503).json({ error: '数据库未连接' });
+    return res.status(503).json({ error: '数据库未连接，请稍后重试' });
   }
 
   try {
     // One-per-day check
-    const existing = await sql`
-      SELECT id FROM checkins WHERE LOWER(name) = LOWER(${name.trim()}) AND date = ${date}
-    `;
-    if (existing.length > 0) {
+    const existing = await pool.query(
+      'SELECT id FROM checkins WHERE LOWER(name) = LOWER($1) AND date = $2',
+      [name.trim(), date]
+    );
+    if (existing.rows.length > 0) {
       return res.status(409).json({ error: `${name} 今天已经打过卡了` });
     }
 
-    const result = await sql`
-      INSERT INTO checkins (name, date, title, stars, color_index, audio_base64, timestamp)
-      VALUES (${name.trim()}, ${date}, ${title.trim()}, ${stars}, ${colorIndex}, ${audio || null}, ${timestamp || new Date().toISOString()})
-      RETURNING id
-    `;
+    const result = await pool.query(
+      `INSERT INTO checkins (name, date, title, stars, color_index, audio_base64, timestamp)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [name.trim(), date, title.trim(), stars, colorIndex, audio || null, timestamp || new Date().toISOString()]
+    );
 
-    const id = result[0].id;
+    const id = result.rows[0].id;
     res.status(201).json({
       id, name: name.trim(), date, title: title.trim(),
       stars, colorIndex,
@@ -96,7 +95,7 @@ app.delete('/api/checkins/:id', async (req, res) => {
   if (!dbReady) return res.status(503).json({ error: '数据库未连接' });
 
   try {
-    await sql`DELETE FROM checkins WHERE id = ${Number(req.params.id)}`;
+    await pool.query('DELETE FROM checkins WHERE id = $1', [Number(req.params.id)]);
     res.json({ success: true });
   } catch (err) {
     console.error('DELETE error:', err.message);
@@ -109,12 +108,15 @@ app.get('/api/audio/:id', async (req, res) => {
   if (!dbReady) return res.status(404).send('Not available');
 
   try {
-    const result = await sql`SELECT audio_base64 FROM checkins WHERE id = ${Number(req.params.id)}`;
-    if (!result[0] || !result[0].audio_base64) {
+    const { rows } = await pool.query(
+      'SELECT audio_base64 FROM checkins WHERE id = $1',
+      [Number(req.params.id)]
+    );
+    if (!rows[0] || !rows[0].audio_base64) {
       return res.status(404).send('No audio');
     }
 
-    const base64 = result[0].audio_base64;
+    const base64 = rows[0].audio_base64;
     const matches = base64.match(/^data:(audio\/\w+);base64,(.+)$/);
     if (!matches) return res.status(400).send('Invalid audio');
 
@@ -131,15 +133,15 @@ app.get('/api/audio/:id', async (req, res) => {
 async function cleanupExpiredAudio() {
   if (!dbReady) return;
   try {
-    const result = await sql`
-      UPDATE checkins
-      SET audio_base64 = NULL
-      WHERE audio_base64 IS NOT NULL
-        AND timestamp < NOW() - INTERVAL '2 days'
-      RETURNING id
-    `;
-    if (result.length > 0) {
-      console.log(`🗑️  已清理 ${result.length} 条过期录音 (超过2天)`);
+    const { rows } = await pool.query(
+      `UPDATE checkins
+       SET audio_base64 = NULL
+       WHERE audio_base64 IS NOT NULL
+         AND timestamp < NOW() - INTERVAL '2 days'
+       RETURNING id`
+    );
+    if (rows.length > 0) {
+      console.log(`🗑️  已清理 ${rows.length} 条过期录音 (超过2天)`);
     }
   } catch (err) {
     console.error('清理过期录音失败:', err.message);
@@ -147,25 +149,23 @@ async function cleanupExpiredAudio() {
 }
 
 // ⏰ 每小时检查一次
-const CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
-
 function startAudioCleanup() {
-  // 立即执行一次
   cleanupExpiredAudio();
-  // 每小时定期执行
-  setInterval(cleanupExpiredAudio, CLEANUP_INTERVAL);
+  setInterval(cleanupExpiredAudio, 60 * 60 * 1000);
   console.log('⏰ 录音自动清理已启动 (保留2天，每小时检查)');
 }
 
 // ── Start server: connect DB first, then listen ────────────
 async function startServer() {
-  if (sql) {
+  if (pool) {
     try {
-      console.log('🔌 正在连接 Neon...');
-      await sql`SELECT 1`;
-      console.log('✅ Neon 已连接');
+      console.log('🔌 正在连接 Neon (pg TCP)...');
+      const client = await pool.connect();
+      const { rows } = await client.query('SELECT 1 AS ok');
+      client.release();
+      console.log('✅ Neon 已连接:', rows[0].ok === 1 ? 'OK' : '?');
 
-      await sql`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS checkins (
           id SERIAL PRIMARY KEY,
           name VARCHAR(255) NOT NULL,
@@ -176,11 +176,9 @@ async function startServer() {
           audio_base64 TEXT,
           timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-      `;
+      `);
       console.log('✅ 数据表已就绪');
       dbReady = true;
-
-      // 启动录音自动清理
       startAudioCleanup();
     } catch (err) {
       console.error('❌ Neon 连接失败:', err.message);
@@ -190,7 +188,7 @@ async function startServer() {
 
   app.listen(PORT, () => {
     console.log(`✅ 英语阅读打卡墙已启动: http://localhost:${PORT}`);
-    console.log(`   数据库: ${dbReady ? 'Neon PostgreSQL ☁️' : 'JSON 文件 (本地降级) 💾'}`);
+    console.log(`   数据库: ${dbReady ? 'Neon PostgreSQL ☁️ (pg)' : 'JSON 文件 (本地降级) 💾'}`);
   });
 }
 
