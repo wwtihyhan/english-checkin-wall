@@ -276,7 +276,8 @@
     flex-wrap: wrap;
     gap: 12px;
   }
-  .wall-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
+  .wall-header h2 { font-size: 20px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .wall-header h2 .btn-download { margin-left: auto; }
   .wall-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
   .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -952,13 +953,12 @@
 
   <!-- Wall -->
   <div class="wall-header">
-    <h2>🏆 打卡记录墙</h2>
+    <h2>🏆 打卡记录墙 <button class="btn-download" onclick="downloadWallImage()">📥 下载图片</button></h2>
     <div class="wall-controls">
       <div class="filter-tabs">
         <button class="filter-tab active" data-filter="week" onclick="setFilter('week', this)">本周</button>
         <button class="filter-tab" data-filter="month" onclick="setFilter('month', this)">本月</button>
       </div>
-      <button class="btn-download" onclick="downloadWallImage()">📥 下载图片</button>
     </div>
   </div>
   <div class="matrix-wrap" id="checkinGrid">
