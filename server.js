@@ -127,9 +127,19 @@ app.delete('/api/checkins/:id', async (req, res) => {
 
   try {
     const id = Number(req.params.id);
-    // Clear audio data first before deleting the record
-    await pool.query('UPDATE checkins SET audio_base64 = NULL WHERE id = $1', [id]);
-    await pool.query('DELETE FROM checkins WHERE id = $1', [id]);
+    // Use transaction to ensure audio cleanup + record deletion are atomic
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE checkins SET audio_base64 = NULL WHERE id = $1', [id]);
+      await client.query('DELETE FROM checkins WHERE id = $1', [id]);
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
     res.json({ success: true });
   } catch (err) {
     console.error('DELETE error:', err.message);

@@ -1420,12 +1420,19 @@ function shake(el) {
 // ── Delete ───────────────────────────────────────────────
 async function deleteCheckin(id) {
   if (!confirm('确定要删除这条打卡记录吗？')) return;
+  // Stop polling during delete to prevent race condition
+  stopPolling();
   try {
     await deleteCheckinApi(id);
     checkins = checkins.filter(c => c.id !== id);
     renderWall();
+    // Re-fetch from server to ensure data consistency
+    await fetchCheckins();
   } catch (e) {
     showWarn('删除失败: ' + e.message);
+  } finally {
+    // Always restart polling after delete attempt
+    startPolling();
   }
 }
 
@@ -1640,21 +1647,20 @@ function renderAudioList() {
 
   countEl.textContent = list.length;
 
+  // Completely rebuild the body content to avoid stale DOM issues
   if (list.length === 0) {
-    emptyEl.style.display = 'block';
-    body.querySelectorAll('.audio-card').forEach(el => el.remove());
+    body.innerHTML = `
+      <div class="audio-list-empty" id="audioListEmpty">还没有录音哦，快去打卡并录制一段朗读吧~</div>
+      <div class="audio-retention-hint">💡 录音保留2天后自动清理</div>`;
     return;
   }
 
-  emptyEl.style.display = 'none';
-
-  // Render cards
-  let html = '';
+  let cardsHtml = '';
   list.forEach(c => {
     const stars = '🌟'.repeat(c.stars || 1);
     const initial = (c.name || '?')[0].toUpperCase();
-    html += `
-      <div class="audio-card">
+    cardsHtml += `
+      <div class="audio-card" data-id="${c.id}">
         <div class="ac-avatar">${initial}</div>
         <div class="ac-info">
           <div class="ac-name">${escapeHtml(c.name)}</div>
@@ -1667,9 +1673,11 @@ function renderAudioList() {
       </div>`;
   });
 
-  // Replace cards, keep empty element
-  body.querySelectorAll('.audio-card').forEach(el => el.remove());
-  emptyEl.insertAdjacentHTML('afterend', html);
+  // Rebuild entire body — no stale elements possible
+  body.innerHTML = `
+    <div class="audio-list-empty" id="audioListEmpty" style="display:none;">还没有录音哦，快去打卡并录制一段朗读吧~</div>
+    ${cardsHtml}
+    <div class="audio-retention-hint">💡 录音保留2天后自动清理</div>`;
 }
 
 function toggleAudioList() {
