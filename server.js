@@ -12,20 +12,48 @@ const PORT = process.env.PORT || 3000;
 // ── Database: Neon PostgreSQL via pg (TCP, not serverless) ─
 let dbReady = false;
 let pool = null;
+let dbConnectError = null; // diagnostic: last connection error
 
 if (process.env.DATABASE_URL) {
   // Remove channel_binding=require — pg uses standard TCP+TLS which is already secure
   const dbUrl = process.env.DATABASE_URL.replace(/&?channel_binding=require/g, '');
+  console.log(`🔍 DATABASE_URL 已配置 (${dbUrl.length} 字符)`);
   pool = new Pool({
     connectionString: dbUrl,
     ssl: { rejectUnauthorized: false },
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 15000,
   });
+} else {
+  console.log('⚠️  未找到 DATABASE_URL 环境变量');
 }
 
 // ── Middleware ────────────────────────────────────────────
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── API: Health check (diagnostics) ─────────────────────
+app.get('/api/health', async (req, res) => {
+  const info = {
+    status: dbReady ? 'ok' : 'degraded',
+    dbReady,
+    hasPool: !!pool,
+    hasDbUrl: !!process.env.DATABASE_URL,
+    dbUrlLen: process.env.DATABASE_URL ? process.env.DATABASE_URL.length : 0,
+    error: dbConnectError,
+    nodeEnv: process.env.NODE_ENV || 'development',
+    uptime: Math.floor(process.uptime())
+  };
+  // If dbReady, also test a simple query
+  if (dbReady) {
+    try {
+      const { rows } = await pool.query('SELECT COUNT(*)::int AS cnt FROM checkins');
+      info.rowCount = rows[0].cnt;
+    } catch (e) {
+      info.queryError = e.message;
+    }
+  }
+  res.json(info);
+});
 
 // ── API: Get all check-ins ────────────────────────────────
 app.get('/api/checkins', async (req, res) => {
@@ -179,10 +207,13 @@ async function startServer() {
       `);
       console.log('✅ 数据表已就绪');
       dbReady = true;
+      dbConnectError = null;
       startAudioCleanup();
     } catch (err) {
-      console.error('❌ Neon 连接失败:', err.message);
-      console.log('⚠️  降级为 JSON 文件模式');
+      dbConnectError = `[${err.code || 'UNKNOWN'}] ${err.message}`;
+      console.error('❌ Neon 连接失败:', dbConnectError);
+      if (err.stack) console.error('   Stack:', err.stack.split('\n').slice(0, 3).join('\n'));
+      console.log('⚠️  降级为 JSON 文件模式 (dbReady=false)');
     }
   }
 
