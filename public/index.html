@@ -201,12 +201,6 @@
     font-size: 12px;
     color: var(--text-light);
   }
-  .name-dropdown-empty {
-    padding: 14px 16px;
-    text-align: center;
-    font-size: 13px;
-    color: var(--text-light);
-  }
 
 
   /* Already checked badge on form */
@@ -1181,7 +1175,7 @@ function showNameDropdown() {
   const filtered = filter ? kids.filter(([n]) => n.toLowerCase().includes(filter)) : kids;
 
   if (filtered.length === 0) {
-    dd.innerHTML = '<div class="name-dropdown-empty">' + (filter ? '没有匹配的小朋友，输入新名字后打卡即可添加' : '还没有小朋友，输入名字开始打卡吧') + '</div>';
+    dd.innerHTML = '';
   } else {
     dd.innerHTML = filtered.map(([n, cnt], i) => {
       const bgColors = ['#FF6B6B','#FFA94D','#FFD43B','#69DB7C','#74C0FC','#B197FC'];
