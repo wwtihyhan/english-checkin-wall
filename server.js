@@ -18,11 +18,10 @@ const PORT = process.env.PORT || 3000;
 
 // ── Database: Neon PostgreSQL ──────────────────────────────
 let sql = null;
-let useDB = false;
+let dbReady = false;
 
 if (process.env.DATABASE_URL) {
   sql = neon(process.env.DATABASE_URL);
-  useDB = true;
 }
 
 // ── Middleware ────────────────────────────────────────────
@@ -32,7 +31,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ── API: Get all check-ins ────────────────────────────────
 app.get('/api/checkins', async (req, res) => {
-  if (!useDB) return res.json([]);
+  if (!dbReady) return res.json([]);
 
   try {
     const rows = await sql`SELECT * FROM checkins ORDER BY id DESC`;
@@ -60,7 +59,7 @@ app.post('/api/checkins', async (req, res) => {
     return res.status(400).json({ error: '姓名、日期、标题不能为空' });
   }
 
-  if (!useDB) {
+  if (!dbReady) {
     return res.status(503).json({ error: '数据库未连接' });
   }
 
@@ -94,7 +93,7 @@ app.post('/api/checkins', async (req, res) => {
 
 // ── API: Delete a check-in ────────────────────────────────
 app.delete('/api/checkins/:id', async (req, res) => {
-  if (!useDB) return res.status(503).json({ error: '数据库未连接' });
+  if (!dbReady) return res.status(503).json({ error: '数据库未连接' });
 
   try {
     await sql`DELETE FROM checkins WHERE id = ${Number(req.params.id)}`;
@@ -107,7 +106,7 @@ app.delete('/api/checkins/:id', async (req, res) => {
 
 // ── API: Stream audio from DB ─────────────────────────────
 app.get('/api/audio/:id', async (req, res) => {
-  if (!useDB) return res.status(404).send('Not available');
+  if (!dbReady) return res.status(404).send('Not available');
 
   try {
     const result = await sql`SELECT audio_base64 FROM checkins WHERE id = ${Number(req.params.id)}`;
@@ -130,7 +129,7 @@ app.get('/api/audio/:id', async (req, res) => {
 
 // ── Audio cleanup: delete recordings older than 2 days ─────
 async function cleanupExpiredAudio() {
-  if (!useDB) return;
+  if (!dbReady) return;
   try {
     const result = await sql`
       UPDATE checkins
@@ -158,19 +157,9 @@ function startAudioCleanup() {
   console.log('⏰ 录音自动清理已启动 (保留2天，每小时检查)');
 }
 
-// ── Start server immediately, init DB in background ───────
-app.listen(PORT, () => {
-  console.log(`✅ 英语阅读打卡墙已启动: http://localhost:${PORT}`);
-  if (useDB) {
-    console.log('   数据库: Neon PostgreSQL ☁️ (后台连接中...)');
-  } else {
-    console.log('   数据库: JSON 文件 (本地) 💾');
-  }
-});
-
-// Background: test connection and ensure table exists
-if (useDB) {
-  (async () => {
+// ── Start server: connect DB first, then listen ────────────
+async function startServer() {
+  if (sql) {
     try {
       console.log('🔌 正在连接 Neon...');
       await sql`SELECT 1`;
@@ -189,12 +178,23 @@ if (useDB) {
         )
       `;
       console.log('✅ 数据表已就绪');
+      dbReady = true;
 
       // 启动录音自动清理
       startAudioCleanup();
     } catch (err) {
       console.error('❌ Neon 连接失败:', err.message);
-      useDB = false;
+      console.log('⚠️  降级为 JSON 文件模式');
     }
-  })();
+  }
+
+  app.listen(PORT, () => {
+    console.log(`✅ 英语阅读打卡墙已启动: http://localhost:${PORT}`);
+    console.log(`   数据库: ${dbReady ? 'Neon PostgreSQL ☁️' : 'JSON 文件 (本地降级) 💾'}`);
+  });
 }
+
+startServer().catch(err => {
+  console.error('服务器启动失败:', err.message);
+  process.exit(1);
+});
