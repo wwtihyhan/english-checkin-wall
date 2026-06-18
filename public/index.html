@@ -992,6 +992,7 @@ const POLL_INTERVAL = 3000; // 3 seconds auto-refresh
 let checkins = [];
 let currentFilter = 'week';
 let pendingAudioDataUrl = null;
+let audioRecorded = false; // 同步标记：onstop 触发即置 true，不等 FileReader
 let nameDropdownIndex = -1;
 let pollTimer = null;
 let useApi = false; // true = server API, false = localStorage fallback
@@ -1273,6 +1274,8 @@ function updateCheckInButton() {
   const name = document.getElementById('inputName').value.trim();
   const date = getToday();
 
+  console.log('[按钮] updateCheckInButton name:', name, 'audioRecorded:', audioRecorded, 'audioUrlSet:', !!pendingAudioDataUrl);
+
   // 今日已打卡 → 禁用
   if (name && hasCheckedIn(name, date)) {
     btn.disabled = true;
@@ -1281,7 +1284,7 @@ function updateCheckInButton() {
   }
 
   // 没有录音 → 禁用
-  if (!pendingAudioDataUrl) {
+  if (!audioRecorded) {
     btn.disabled = true;
     btn.textContent = '🎙️ 请先录音再打卡';
     return;
@@ -1306,6 +1309,8 @@ async function startRecording() {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     audioChunks = [];
+    audioRecorded = false;
+    pendingAudioDataUrl = null;
     recordingSeconds = 0;
 
     mediaRecorder = new MediaRecorder(stream, {
@@ -1319,15 +1324,30 @@ async function startRecording() {
 
     mediaRecorder.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
+      audioRecorded = true; // 立即标记，不等 FileReader
+      updateCheckInButton(); // 立即启用打卡按钮
+      console.log('[录音] onstop 触发, audioRecorded=true, 按钮已更新');
 
       const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      console.log('[录音] blob大小:', (blob.size / 1024).toFixed(1), 'KB, chunks:', audioChunks.length);
+
       const reader = new FileReader();
       reader.onload = (ev) => {
         pendingAudioDataUrl = ev.target.result;
+        console.log('[录音] reader.onload 完成, dataUrl长度:', pendingAudioDataUrl ? pendingAudioDataUrl.length : 0);
         const audioEl = document.getElementById('audioPreview');
         audioEl.src = URL.createObjectURL(blob);
         document.getElementById('audioPreviewWrap').style.display = 'flex';
-        updateCheckInButton(); // 录音完成，启用打卡按钮
+        try {
+          updateCheckInButton(); // 录音完成，启用打卡按钮
+          console.log('[录音] updateCheckInButton 调用完成, 按钮状态:', document.getElementById('btnCheckIn').disabled);
+        } catch (e) {
+          console.error('[录音] updateCheckInButton 出错:', e);
+        }
+      };
+      reader.onerror = (err) => {
+        console.error('[录音] FileReader 读取失败:', err);
+        updateCheckInButton();
       };
       reader.readAsDataURL(blob);
     };
@@ -1379,6 +1399,7 @@ function removeAudio() {
   clearInterval(recordingTimer);
   recordingTimer = null;
   pendingAudioDataUrl = null;
+  audioRecorded = false;
   audioChunks = [];
   recordingSeconds = 0;
   document.getElementById('audioPreviewWrap').style.display = 'none';
@@ -1403,7 +1424,7 @@ async function doCheckIn() {
   if (!name) { shake(nameEl); return; }
 
   if (!pendingAudioDataUrl) {
-    showWarn('请先录音再打卡 🎙️');
+    showWarn('录音数据正在处理中，请稍等再打卡 🎙️');
     return;
   }
 
