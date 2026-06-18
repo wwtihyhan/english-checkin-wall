@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🌟 英语阅读打卡墙</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <style>
   :root {
     --bg: #FFF8F0;
@@ -297,6 +298,20 @@
     color: #FFF;
     border-color: var(--primary);
   }
+
+  .btn-download {
+    padding: 7px 16px;
+    border-radius: 50px;
+    border: 2px solid #E9ECEF;
+    background: #FFF;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.2s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .btn-download:hover { background: #FFF5F5; border-color: var(--primary); color: var(--primary); }
 
   /* ===== Matrix view ===== */
   .matrix-wrap {
@@ -943,6 +958,7 @@
         <button class="filter-tab active" data-filter="week" onclick="setFilter('week', this)">本周</button>
         <button class="filter-tab" data-filter="month" onclick="setFilter('month', this)">本月</button>
       </div>
+      <button class="btn-download" onclick="downloadWallImage()">📥 下载图片</button>
     </div>
   </div>
   <div class="matrix-wrap" id="checkinGrid">
@@ -1710,6 +1726,30 @@ function spawnConfetti() {
     `;
     document.body.appendChild(el);
     setTimeout(() => el.remove(), 3200);
+  }
+}
+
+// ── Download wall as image ───────────────────────────────
+async function downloadWallImage() {
+  const grid = document.getElementById('checkinGrid');
+  if (!grid || !grid.querySelector('.mtb-table')) {
+    showWarn('打卡墙还没有记录，无法下载');
+    return;
+  }
+
+  try {
+    const canvas = await html2canvas(grid, {
+      backgroundColor: '#FFFFFF',
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+    });
+    const link = document.createElement('a');
+    link.download = `英语阅读打卡墙_${getToday()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  } catch (e) {
+    showWarn('图片生成失败: ' + e.message);
   }
 }
 
