@@ -278,20 +278,6 @@
   .wall-header h2 { font-size: 20px; font-weight: 700; color: var(--text); }
   .wall-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 
-  /* Search */
-  .search-box {
-    padding: 8px 14px;
-    border: 2px solid #E9ECEF;
-    border-radius: 50px;
-    font-size: 13px;
-    font-family: inherit;
-    color: var(--text);
-    outline: none;
-    width: 160px;
-    transition: border-color 0.2s;
-  }
-  .search-box:focus { border-color: var(--primary); }
-
   .filter-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
   .filter-tab {
     padding: 7px 16px;
@@ -873,7 +859,6 @@
     .form-group { min-width: 100%; }
     .btn-primary { font-size: 16px; padding: 14px 24px; }
     .wall-controls { flex-direction: column; align-items: flex-start; }
-    .search-box { width: 100%; }
     .mth-name, .mtb-name { min-width: 90px; width: 90px; }
     .mth-date { min-width: 36px; font-size: 12px; }
     .mtb-cell { min-width: 36px; height: 38px; }
@@ -955,7 +940,6 @@
   <div class="wall-header">
     <h2>🏆 打卡记录墙</h2>
     <div class="wall-controls">
-      <input class="search-box" type="text" id="searchBox" placeholder="🔍 搜索小朋友姓名…" oninput="renderWall()">
       <div class="filter-tabs">
         <button class="filter-tab active" data-filter="week" onclick="setFilter('week', this)">本周</button>
         <button class="filter-tab" data-filter="month" onclick="setFilter('month', this)">本月</button>
@@ -1475,7 +1459,6 @@ function dateKey(d) {
 // ── Render (matrix view) ─────────────────────────────────
 function renderWall() {
   const grid = document.getElementById('checkinGrid');
-  const q = (document.getElementById('searchBox').value || '').trim().toLowerCase();
 
   const dates = getDateRange();
   const WEEKDAYS = ['日','一','二','三','四','五','六'];
@@ -1489,7 +1472,6 @@ function renderWall() {
   }
 
   let kidNames = [...new Set(checkins.map(c => c.name.trim()).filter(Boolean))];
-  if (q) kidNames = kidNames.filter(n => n.toLowerCase().includes(q));
 
   const rangeDateKeys = new Set(dates.map(d => dateKey(d)));
   kidNames = kidNames.filter(name => {
@@ -1502,8 +1484,8 @@ function renderWall() {
     grid.innerHTML = `
       <div class="empty-state">
         <span class="empty-icon">📭</span>
-        <h3>${q ? `找不到"${escapeHtml(q)}"的打卡记录` : `${label}还没有打卡记录`}</h3>
-        <p>${q ? '换个名字搜搜看' : '快来打卡吧！'}</p>
+        <h3>${label}还没有打卡记录</h3>
+        <p>快来打卡吧！</p>
       </div>`;
     updateStats();
     return;
