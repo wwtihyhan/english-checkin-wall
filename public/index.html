@@ -657,18 +657,6 @@
   }
   .audio-preview-wrap .audio-remove-btn:hover { background: #FA5252; }
 
-  /* Cell audio badge */
-  .mtb-cell-inner .cell-audio-badge {
-    font-size: 10px;
-    background: #FFF5F5;
-    color: var(--primary);
-    padding: 1px 4px;
-    border-radius: 4px;
-    font-weight: 600;
-    margin-top: 1px;
-    line-height: 1;
-  }
-
   /* Audio list panel */
   .audio-list-panel {
     background: var(--card-bg);
@@ -1572,12 +1560,10 @@ function renderWall() {
 
       if (c) {
         const stars = '🌟'.repeat(c.stars || 1);
-        const audioBadge = c.audio ? '<div class="cell-audio-badge">🎙️</div>' : '';
         html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
           <div class="mtb-cell-inner">
             <span class="cell-stars" onclick="showCellTooltip(event, '${c.id}')">${stars}</span>
             <button class="cell-view-btn" onclick="showCellTooltip(event, '${c.id}')">查看</button>
-            ${audioBadge}
           </div>
         </td>`;
       } else {
