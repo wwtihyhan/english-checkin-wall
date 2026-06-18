@@ -460,15 +460,6 @@
     letter-spacing: 1px;
     line-height: 1;
   }
-  .mtb-cell-inner .cell-title {
-    font-size: 9px;
-    color: var(--text-light);
-    max-width: 40px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1.2;
-  }
   .mtb-cell-empty {
     color: #E9ECEF;
     font-size: 14px;
@@ -1575,12 +1566,10 @@ function renderWall() {
 
       if (c) {
         const stars = '🌟'.repeat(c.stars || 1);
-        const shortTitle = (c.title || '').length > 4 ? c.title.slice(0, 4) + '…' : (c.title || '');
         const audioBadge = c.audio ? '<div class="cell-audio-badge">🎙️</div>' : '';
         html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
           <div class="mtb-cell-inner" onclick="showCellTooltip(event, '${c.id}')">
             <span class="cell-stars">${stars}</span>
-            ${shortTitle ? `<span class="cell-title">${escapeHtml(shortTitle)}</span>` : ''}
             ${audioBadge}
           </div>
         </td>`;
