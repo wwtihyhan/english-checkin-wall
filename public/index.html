@@ -835,6 +835,60 @@
     from { opacity: 0; top: 0; }
     to { opacity: 1; top: 24px; }
   }
+
+  /* Confirm dialog */
+  .confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 600;
+    animation: confirmIn 0.2s ease-out;
+  }
+  @keyframes confirmIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .confirm-dialog {
+    background: #FFF;
+    border-radius: var(--radius-lg);
+    padding: 36px 40px 28px;
+    text-align: center;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.25);
+    max-width: 380px;
+    width: 90%;
+    animation: confirmPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes confirmPop {
+    from { opacity: 0; transform: scale(0.85) translateY(16px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  .confirm-dialog .cd-emoji { font-size: 48px; display: block; margin-bottom: 12px; }
+  .confirm-dialog .cd-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+  .confirm-dialog .cd-desc { font-size: 14px; color: var(--text-light); margin-bottom: 24px; line-height: 1.6; }
+  .confirm-dialog .cd-actions { display: flex; gap: 12px; }
+  .confirm-dialog .cd-btn {
+    flex: 1;
+    padding: 12px 0;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .confirm-dialog .cd-btn:active { transform: scale(0.96); }
+  .confirm-dialog .cd-btn-cancel {
+    background: #F1F3F5;
+    color: var(--text-light);
+  }
+  .confirm-dialog .cd-btn-cancel:hover { background: #E9ECEF; }
+  .confirm-dialog .cd-btn-danger {
+    background: #FF6B6B;
+    color: #FFF;
+    box-shadow: 0 4px 14px rgba(255,107,107,0.35);
+  }
+  .confirm-dialog .cd-btn-danger:hover { background: #FA5252; box-shadow: 0 6px 20px rgba(255,107,107,0.45); }
   @keyframes warnOut {
     from { opacity: 1; }
     to { opacity: 0; top: 0; }
@@ -984,6 +1038,9 @@
 
 <!-- Toast overlay -->
 <div class="toast-overlay" id="toastOverlay" style="display:none;"></div>
+
+<!-- Confirm dialog -->
+<div id="confirmRoot"></div>
 
 <script>
 const CARD_COLORS = 6;
@@ -1419,7 +1476,11 @@ function shake(el) {
 
 // ── Delete ───────────────────────────────────────────────
 async function deleteCheckin(id) {
-  if (!confirm('确定要删除这条打卡记录吗？')) return;
+  // Find the record for display in confirm dialog
+  const record = checkins.find(c => c.id === id);
+  if (!record) return;
+  const ok = await showConfirm(record.name);
+  if (!ok) return;
   // Stop polling during delete to prevent race condition
   stopPolling();
   try {
@@ -1434,6 +1495,42 @@ async function deleteCheckin(id) {
     // Always restart polling after delete attempt
     startPolling();
   }
+}
+
+// ── Confirm Dialog ───────────────────────────────────────
+function showConfirm(name) {
+  return new Promise(resolve => {
+    const root = document.getElementById('confirmRoot');
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-dialog" onclick="event.stopPropagation()">
+        <span class="cd-emoji">🗑️</span>
+        <div class="cd-title">确认删除</div>
+        <div class="cd-desc">确定要删除 <strong>${escapeHtml(name)}</strong> 的打卡记录吗？<br>相关的录音文件也会同步清除。</div>
+        <div class="cd-actions">
+          <button class="cd-btn cd-btn-cancel" id="confirmCancel-$">取消</button>
+          <button class="cd-btn cd-btn-danger" id="confirmOk-$">确认删除</button>
+        </div>
+      </div>`;
+    root.appendChild(overlay);
+
+    const cancel = overlay.querySelector('.cd-btn-cancel');
+    const ok = overlay.querySelector('.cd-btn-danger');
+    
+    const cleanup = (result) => {
+      overlay.removeEventListener('click', onOverlay);
+      root.innerHTML = '';
+      resolve(result);
+    };
+
+    const onOverlay = (e) => {
+      if (e.target === overlay) cleanup(false);
+    };
+    overlay.addEventListener('click', onOverlay);
+    cancel.addEventListener('click', () => cleanup(false));
+    ok.addEventListener('click', () => cleanup(true));
+  });
 }
 
 // ── Filter ───────────────────────────────────────────────
