@@ -9,4 +9,15 @@ services:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
+        fromDatabase:
+          name: checkin-db
+          property: connectionString
+      # Neon 备用连接串（仅用于数据恢复）
+      - key: NEON_URL
         value: postgresql://neondb_owner:npg_S5xAnYGJL4tH@ep-shy-tooth-atj1kwma-pooler.c-9.us-east-1.aws.neon.tech/neondb?sslmode=verify-full
+
+databases:
+  - name: checkin-db
+    databaseName: checkin
+    user: checkin_user
+    plan: free
