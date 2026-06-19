@@ -176,7 +176,7 @@ app.get('/api/audio/:id', async (req, res) => {
   }
 });
 
-// ── Audio cleanup: delete recordings older than 2 days ─────
+// ── Audio cleanup: delete recordings older than 3 days ─────
 async function cleanupExpiredAudio() {
   if (!dbReady) return;
   try {
@@ -184,11 +184,11 @@ async function cleanupExpiredAudio() {
       `UPDATE checkins
        SET audio_base64 = NULL
        WHERE audio_base64 IS NOT NULL
-         AND timestamp < NOW() - INTERVAL '2 days'
+         AND timestamp < NOW() - INTERVAL '3 days'
        RETURNING id`
     );
     if (rows.length > 0) {
-      console.log(`🗑️  已清理 ${rows.length} 条过期录音 (超过2天)`);
+      console.log(`🗑️  已清理 ${rows.length} 条过期录音 (超过3天)`);
     }
   } catch (err) {
     console.error('清理过期录音失败:', err.message);
