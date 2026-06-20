@@ -1329,6 +1329,9 @@ function dismissLoading() {
   }
 }
 
+// 安全兜底：最多等待 8 秒，防止 JS 报错导致页面永久不可见
+const SAFETY_TIMEOUT = setTimeout(dismissLoading, 8000);
+
 // Detect backend first, then start
 detectBackend().then(() => {
   fetchCheckins();
@@ -1337,6 +1340,12 @@ detectBackend().then(() => {
   updateCheckInButton();
   // 数据加载完成 → 淡出 loading screen
   setTimeout(dismissLoading, 300);
+}).catch((err) => {
+  console.error('[Init] 初始化出错，仍显示页面:', err);
+  dismissLoading();
+}).finally(() => {
+  clearTimeout(SAFETY_TIMEOUT);
+});
 });
 
 // ── Helpers ──────────────────────────────────────────────
