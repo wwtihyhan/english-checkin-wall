@@ -1660,6 +1660,7 @@ function resetRecordUI() {
 
 // ── Check-in ─────────────────────────────────────────────
 async function doCheckIn() {
+  const btn = document.getElementById('btnCheckIn');
   const nameEl  = document.getElementById('inputName');
   const name  = nameEl.value.trim();
   const date  = getToday();
@@ -1676,6 +1677,11 @@ async function doCheckIn() {
     return;
   }
 
+  // ── 提交中：锁定按钮防止重复点击 ──
+  btn.disabled = true;
+  btn.textContent = '⏳ 正在提交…';
+  const originalText = '✅ 打卡签到';
+
   const stars = calcStars(name);
   const allByKid = checkins.filter(c => c.name === name);
   const colorIndex = allByKid.length % CARD_COLORS;
@@ -1687,14 +1693,22 @@ async function doCheckIn() {
   };
 
   try {
-    const created = await createCheckin(record);
+    // 最多等 15 秒，超时则提示
+    const created = await Promise.race([
+      createCheckin(record),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('请求超时，请检查网络后重试 ⏰')), 15000))
+    ]);
     checkins.push(created);
     showSuccess(name, stars);
     removeAudio();
     checkAlreadyDone();
     renderWall();
   } catch (e) {
+    console.error('[doCheckIn] 打卡出错:', e);
     showWarn('打卡失败: ' + e.message);
+    // 出错时恢复按钮（让用户可以重试）
+    btn.disabled = false;
+    btn.textContent = originalText;
   }
 }
 
