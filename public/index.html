@@ -976,7 +976,7 @@
     </div>
     <div class="audio-list-body" id="audioListBody">
       <div class="audio-list-empty" id="audioListEmpty">还没有录音哦，快去打卡并录制一段朗读吧~</div>
-      <div class="audio-retention-hint">💡 录音保留2天后自动清理</div>
+      <div class="audio-retention-hint">💡 录音保留30天后自动清理</div>
     </div>
   </div>
 </div>
@@ -1711,7 +1711,7 @@ function renderAudioList() {
   if (list.length === 0) {
     body.innerHTML = `
       <div class="audio-list-empty" id="audioListEmpty">还没有录音哦，快去打卡并录制一段朗读吧~</div>
-      <div class="audio-retention-hint">💡 录音保留2天后自动清理</div>`;
+      <div class="audio-retention-hint">💡 录音保留30天后自动清理</div>`;
     return;
   }
 
@@ -1737,7 +1737,7 @@ function renderAudioList() {
   body.innerHTML = `
     <div class="audio-list-empty" id="audioListEmpty" style="display:none;">还没有录音哦，快去打卡并录制一段朗读吧~</div>
     ${cardsHtml}
-    <div class="audio-retention-hint">💡 录音保留2天后自动清理</div>`;
+    <div class="audio-retention-hint">💡 录音保留30天后自动清理</div>`;
 }
 
 function toggleAudioList() {
