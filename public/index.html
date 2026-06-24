@@ -453,6 +453,16 @@
     font-size: 12px;
     letter-spacing: 1px;
     line-height: 1;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+  }
+  /* 4颗及以上星星自动缩小，防止溢出网格 */
+  .mtb-cell-inner .cell-stars[data-count="4"],
+  .mtb-cell-inner .cell-stars[data-count="5"] {
+    font-size: 9px;
+    letter-spacing: 0.5px;
   }
   .mtb-cell-inner .cell-view-btn {
     font-size: 10px;
@@ -1624,7 +1634,7 @@ function renderWall() {
         const stars = '🌟'.repeat(c.stars || 1);
         html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
           <div class="mtb-cell-inner">
-            <span class="cell-stars" onclick="showCellTooltip(event, '${c.id}')">${stars}</span>
+            <span class="cell-stars" data-count="${c.stars || 1}" onclick="showCellTooltip(event, '${c.id}')">${stars}</span>
             <button class="cell-view-btn" onclick="showCellTooltip(event, '${c.id}')">查看</button>
           </div>
         </td>`;
