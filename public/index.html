@@ -1211,11 +1211,11 @@ function calcStarsOnDay(name, date) {
     if ((d2 - d1) / (1000*60*60*24) === 1) streak++;
     else break;
   }
-  return Math.min(streak + 1, STARS_MAX);
+  return Math.min(streak, STARS_MAX);
 }
 
 function calcStars(name) {
-  return Math.min(calcStreak(name) + 1, STARS_MAX);
+  return Math.min(calcStreak(name), STARS_MAX);
 }
 
 // ── Error display ────────────────────────────────────────
