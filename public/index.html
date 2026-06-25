@@ -1141,15 +1141,16 @@ function hasCheckedIn(name, date) {
   return checkins.some(c => c.name.trim().toLowerCase() === name.trim().toLowerCase() && c.date === date);
 }
 
-function calcStreak(name) {
-  // 本周内打卡记录（每周一重新计算，不跨周）
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
-  monday.setHours(0, 0, 0, 0);
-  const mondayStr = `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
+function getWeekMonday(dateStr) {
+  const d = new Date(dateStr + 'T00:00');
+  const dayOfWeek = d.getDay();
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  return `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
+}
 
+function calcStreak(name) {
+  const mondayStr = getWeekMonday(getToday());
   const allDays = [...new Set(
     checkins.filter(c => c.name === name && c.date >= mondayStr).map(c => c.date)
   )].sort();
@@ -1163,6 +1164,25 @@ function calcStreak(name) {
     else break;
   }
   return streak;
+}
+
+// 计算某一天该小朋友的星星数（基于该天所在周）
+function calcStarsOnDay(name, date) {
+  const mondayStr = getWeekMonday(date);
+  // 该周内到 date 为止的连续天数
+  const allDays = [...new Set(
+    checkins.filter(c => c.name === name && c.date >= mondayStr && c.date <= date).map(c => c.date)
+  )].sort();
+
+  if (!allDays.length) return 1;
+  let streak = 1;
+  for (let i = allDays.length - 1; i > 0; i--) {
+    const d1 = new Date(allDays[i-1]);
+    const d2 = new Date(allDays[i]);
+    if ((d2 - d1) / (1000*60*60*24) === 1) streak++;
+    else break;
+  }
+  return Math.min(streak + 1, STARS_MAX);
 }
 
 function calcStars(name) {
@@ -1646,10 +1666,11 @@ function renderWall() {
       const isToday = dk === today;
 
       if (c) {
-        const stars = '🌟'.repeat(c.stars || 1);
+        const starCount = calcStarsOnDay(c.name, c.date);
+        const stars = '🌟'.repeat(starCount);
         html += `<td class="mtb-cell${isToday ? ' today-cell' : ''}" data-id="${c.id}">
           <div class="mtb-cell-inner">
-            <span class="cell-stars" data-count="${c.stars || 1}" onclick="showCellTooltip(event, '${c.id}')">${stars}</span>
+            <span class="cell-stars" data-count="${starCount}" onclick="showCellTooltip(event, '${c.id}')">${stars}</span>
             <button class="cell-view-btn" onclick="showCellTooltip(event, '${c.id}')">查看</button>
           </div>
         </td>`;
@@ -1742,7 +1763,8 @@ function renderAudioList() {
 
   let cardsHtml = '';
   list.forEach(c => {
-    const stars = '🌟'.repeat(c.stars || 1);
+    const starCount = calcStarsOnDay(c.name, c.date);
+    const stars = '🌟'.repeat(starCount);
     const initial = (c.name || '?')[0].toUpperCase();
     cardsHtml += `
       <div class="audio-card" data-id="${c.id}">
