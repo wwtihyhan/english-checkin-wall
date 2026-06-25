@@ -464,6 +464,12 @@
     font-size: 9px;
     letter-spacing: 0.5px;
   }
+  /* 6-7颗星进一步缩小 */
+  .mtb-cell-inner .cell-stars[data-count="6"],
+  .mtb-cell-inner .cell-stars[data-count="7"] {
+    font-size: 8px;
+    letter-spacing: 0;
+  }
   .mtb-cell-inner .cell-view-btn {
     font-size: 10px;
     color: var(--primary);
@@ -996,7 +1002,7 @@
 
 <script>
 const CARD_COLORS = 6;
-const STARS_MAX = 5;
+const STARS_MAX = 7;
 const POLL_INTERVAL = 3000; // 3 seconds auto-refresh
 
 let checkins = [];
