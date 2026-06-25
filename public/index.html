@@ -1136,14 +1136,23 @@ function hasCheckedIn(name, date) {
 }
 
 function calcStreak(name) {
-  const days = [...new Set(
-    checkins.filter(c => c.name === name).map(c => c.date)
+  // 本周内打卡记录（每周一重新计算，不跨周）
+  const now = new Date();
+  const dayOfWeek = now.getDay();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  monday.setHours(0, 0, 0, 0);
+  const mondayStr = `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
+
+  const allDays = [...new Set(
+    checkins.filter(c => c.name === name && c.date >= mondayStr).map(c => c.date)
   )].sort();
-  if (!days.length) return 0;
+
+  if (!allDays.length) return 0;
   let streak = 1;
-  for (let i = days.length - 1; i > 0; i--) {
-    const d1 = new Date(days[i-1]);
-    const d2 = new Date(days[i]);
+  for (let i = allDays.length - 1; i > 0; i--) {
+    const d1 = new Date(allDays[i-1]);
+    const d2 = new Date(allDays[i]);
     if ((d2 - d1) / (1000*60*60*24) === 1) streak++;
     else break;
   }
