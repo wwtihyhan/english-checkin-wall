@@ -768,13 +768,42 @@
     font-size: 11px;
     margin-top: 2px;
   }
+  /* 自定义音频播放器 */
   .audio-card .ac-player {
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 160px;
   }
-  .audio-card .ac-player audio {
-    width: 180px;
-    height: 32px;
-    border-radius: 6px;
+  .ac-player-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+  }
+  .ac-play-btn {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: none; background: var(--primary); color: #FFF;
+    font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: transform .15s, opacity .15s;
+  }
+  .ac-play-btn:hover { transform: scale(1.08); opacity: .9; }
+  .ac-progress-wrap { flex: 1; min-width: 60px; position: relative; }
+  .ac-progress-bar {
+    width: 100%; height: 6px; border-radius: 3px;
+    background: #E9ECEF; cursor: pointer; position: relative;
+  }
+  .ac-progress-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, #FF9F43, #FF6B6B);
+    width: 0%; transition: width .1s linear;
+  }
+  .ac-time {
+    font-size: 10px; color: #999; white-space: nowrap;
+    font-variant-numeric: tabular-nums; min-width: 58px;
+    text-align: right;
   }
   .audio-list-empty {
     text-align: center;
@@ -1720,7 +1749,13 @@ function showCellTooltip(e, id) {
         <div class="rm-divider"></div>
         <div class="rm-audio">
           <div class="rm-audio-label">🎙️ 朗读录音</div>
-          <audio controls src="${c.audio}" preload="metadata"></audio>
+          <div class="ac-player-wrap" style="width:100%;max-width:260px;">
+            <button class="ac-play-btn" onclick="acTogglePlay(this)" data-src="${c.audio}">▶</button>
+            <div class="ac-progress-wrap" onclick="acSeek(event, this)">
+              <div class="ac-progress-bar"><div class="ac-progress-fill"></div></div>
+            </div>
+            <span class="ac-time" data-src="${c.audio}">0:00 / 0:00</span>
+          </div>
         </div>` : ''}
       <div class="rm-actions">
         <button class="rm-btn rm-btn-close" onclick="hideCellTooltip()">关闭</button>
@@ -1775,7 +1810,13 @@ function renderAudioList() {
           <div class="ac-stars">${stars}</div>
         </div>
         <div class="ac-player">
-          <audio controls preload="metadata" src="${c.audio}"></audio>
+          <div class="ac-player-wrap">
+            <button class="ac-play-btn" onclick="acTogglePlay(this)" data-src="${c.audio}">▶</button>
+            <div class="ac-progress-wrap" onclick="acSeek(event, this)">
+              <div class="ac-progress-bar"><div class="ac-progress-fill"></div></div>
+            </div>
+            <span class="ac-time" data-src="${c.audio}">0:00 / 0:00</span>
+          </div>
         </div>
       </div>`;
   });
@@ -1790,6 +1831,77 @@ function renderAudioList() {
 function toggleAudioList() {
   const panel = document.getElementById('audioListPanel');
   panel.classList.toggle('collapsed');
+}
+
+// ── Custom Audio Player ──────────────────────────────────
+let acCurrentAudio = null; // 当前正在播放的 Audio 对象
+
+function formatTime(sec) {
+  if (!isFinite(sec) || sec < 0) sec = 0;
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function acTogglePlay(btn) {
+  const src = btn.dataset.src;
+  const wrap = btn.closest('.ac-player-wrap') || btn.parentElement;
+  const timeEl = wrap.querySelector('.ac-time');
+  const fillEl = wrap.querySelector('.ac-progress-fill');
+
+  // 如果点击的是当前正在播放的按钮 → 暂停
+  if (acCurrentAudio && acCurrentAudio.src && acCurrentAudio.src.endsWith(src.split('/').pop())) {
+    if (acCurrentAudio.paused) {
+      acCurrentAudio.play();
+      btn.textContent = '⏸';
+    } else {
+      acCurrentAudio.pause();
+      btn.textContent = '▶';
+    }
+    return;
+  }
+
+  // 停止之前的播放
+  if (acCurrentAudio) {
+    acCurrentAudio.pause();
+    acCurrentAudio.onTimeUpdate = null;
+    // 重置之前所有播放按钮
+    document.querySelectorAll('.ac-play-btn').forEach(b => b.textContent = '▶');
+  }
+
+  // 创建新的 Audio
+  acCurrentAudio = new Audio(src);
+  acCurrentAudio.preload = 'metadata';
+
+  acCurrentAudio.addEventListener('loadedmetadata', () => {
+    if (timeEl) timeEl.textContent = `0:00 / ${formatTime(acCurrentAudio.duration)}`;
+  }, { once: true });
+
+  acCurrentAudio.addEventListener('timeupdate', () => {
+    if (!isFinite(acCurrentAudio.duration)) return;
+    const pct = Math.min((acCurrentAudio.currentTime / acCurrentAudio.duration) * 100, 100);
+    if (fillEl) fillEl.style.width = pct + '%';
+    if (timeEl) timeEl.textContent = `${formatTime(acCurrentAudio.currentTime)} / ${formatTime(acCurrentAudio.duration)}`;
+  });
+
+  acCurrentAudio.addEventListener('ended', () => {
+    btn.textContent = '▶';
+    if (fillEl) fillEl.style.width = '0%';
+    if (timeEl) timeEl.textContent = `0:00 / ${formatTime(acCurrentAudio.duration)}`;
+  });
+
+  acCurrentAudio.play().catch(() => {});
+  btn.textContent = '⏸';
+}
+
+function acSeek(e, progressWrap) {
+  const wrap = progressWrap.closest('.ac-player-wrap') || progressWrap.parentElement;
+  const src = wrap.querySelector('[data-src]')?.dataset.src;
+  if (!src || !acCurrentAudio || !acCurrentAudio.src || !acCurrentAudio.src.includes(src.split('/').pop())) return;
+
+  const rect = progressWrap.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  acCurrentAudio.currentTime = pct * acCurrentAudio.duration;
 }
 
 // ── Stats ────────────────────────────────────────────────
