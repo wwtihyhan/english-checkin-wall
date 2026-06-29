@@ -1835,6 +1835,7 @@ function toggleAudioList() {
 
 // ── Custom Audio Player ──────────────────────────────────
 let acCurrentAudio = null; // 当前正在播放的 Audio 对象
+const acDurationCache = new Map(); // 缓存已解码的音频时长（base64 URL → 秒数）
 
 function formatTime(sec) {
   if (!isFinite(sec) || sec < 0) sec = 0;
@@ -1843,11 +1844,41 @@ function formatTime(sec) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// 用 Web Audio API 解码 base64 音频获取真实时长（终极兜底）
+async function fetchDurationViaWAA(src) {
+  if (acDurationCache.has(src)) return acDurationCache.get(src);
+  try {
+    const resp = await fetch(src);
+    const buf = await resp.arrayBuffer();
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const ab = await ctx.decodeAudioData(buf);
+    const dur = ab.duration;
+    acDurationCache.set(src, dur);
+    ctx.close();
+    return dur;
+  } catch (e) {
+    console.warn('[audio] WAA解码获取时长失败:', e.message || e);
+    return null;
+  }
+}
+
 // 更新时间显示的统一方法
-function acUpdateTime(timeEl, fillEl, audio) {
-  if (!audio) return;
-  const dur = audio.duration;
-  const cur = audio.currentTime;
+function acUpdateTime(timeEl, fillEl, audio, forcedDur) {
+  if (!audio && !forcedDur) return;
+  const cur = audio ? audio.currentTime : 0;
+  let dur = audio ? audio.duration : NaN;
+
+  // 如果 <audio>.duration 不可用，用缓存或强制传入的值
+  if (!isFinite(dur) || dur <= 0) {
+    if (forcedDur && forcedDur > 0) dur = forcedDur;
+    else if (audio && audio._acSrc && acDurationCache.has(audio._acSrc))
+      dur = acDurationCache.get(audio._acSrc);
+  }
+
+  // 拿到了就缓存起来
+  if (isFinite(dur) && dur > 0 && audio && audio._acSrc)
+    acDurationCache.set(audio._acSrc, dur);
+
   if (timeEl) {
     const durStr = (isFinite(dur) && dur > 0) ? formatTime(dur) : '?:??';
     timeEl.textContent = `${formatTime(cur)} / ${durStr}`;
@@ -1878,13 +1909,11 @@ function acTogglePlay(btn) {
   // 停止之前的播放
   if (acCurrentAudio) {
     acCurrentAudio.pause();
-    // 移除所有旧的事件监听（通过替换方式）
     const old = acCurrentAudio;
-    acCurrentAudio = null; // 标记已废弃
+    acCurrentAudio = null;
     old.removeAttribute('src');
     old.load();
   }
-  // 重置之前所有播放按钮
   document.querySelectorAll('.ac-play-btn').forEach(b => b.textContent = '▶');
 
   // 显示加载状态
@@ -1892,50 +1921,28 @@ function acTogglePlay(btn) {
 
   // 创建新的 Audio
   const audio = new Audio(src);
-  audio._acSrc = src; // 用自定义属性标识，兼容 data URL
+  audio._acSrc = src;
   acCurrentAudio = audio;
 
   let metadataResolved = false;
 
-  // 方法1: loadedmetadata（标准方式）
-  audio.addEventListener('loadedmetadata', () => {
-    if (!metadataResolved) { metadataResolved = true; }
-    acUpdateTime(timeEl, fillEl, audio);
-  });
+  // 方法1-3: 标准 HTML5 事件
+  audio.addEventListener('loadedmetadata', () => { if (!metadataResolved) metadataResolved = true; acUpdateTime(timeEl, fillEl, audio); });
+  audio.addEventListener('durationchange', () => { if (audio.duration && !metadataResolved) metadataResolved = true; acUpdateTime(timeEl, fillEl, audio); });
+  audio.addEventListener('canplay', () => { if (audio.duration && !metadataResolved) metadataResolved = true; acUpdateTime(timeEl, fillEl, audio); });
 
-  // 方法2: durationchange（某些浏览器/格式走这个）
-  audio.addEventListener('durationchange', () => {
-    if (audio.duration && audio.duration > 0 && !metadataResolved) {
-      metadataResolved = true;
-    }
-    acUpdateTime(timeEl, fillEl, audio);
-  });
-
-  // 方法3: canplay（兜底，大部分情况能拿到 duration）
-  audio.addEventListener('canplay', () => {
-    if (!metadataResolved && audio.duration && audio.duration > 0) {
-      metadataResolved = true;
-    }
-    acUpdateTime(timeEl, fillEl, audio);
-  });
-
-  // 播放进度更新（高频）
-  audio.addEventListener('timeupdate', () => {
-    acUpdateTime(timeEl, fillEl, audio);
-  });
+  // 方法4: timeupdate 中持续尝试
+  audio.addEventListener('timeupdate', () => { acUpdateTime(timeEl, fillEl, audio); });
 
   // 播放结束
   audio.addEventListener('ended', () => {
     btn.textContent = '▶';
     if (fillEl) fillEl.style.width = '0%';
-    if (timeEl && isFinite(audio.duration) && audio.duration > 0) {
-      timeEl.textContent = `0:00 / ${formatTime(audio.duration)}`;
-    } else if (timeEl) {
-      timeEl.textContent = '0:00 / ?:??';
-    }
+    let d = audio.duration;
+    if ((!isFinite(d) || d <= 0) && acDurationCache.has(src)) d = acDurationCache.get(src);
+    if (timeEl) timeEl.textContent = `0:00 / ${(isFinite(d) && d > 0) ? formatTime(d) : '?:??'}`;
   });
 
-  // 加载错误处理
   audio.addEventListener('error', () => {
     console.error('[audio] 加载失败:', audio.error);
     if (timeEl) timeEl.textContent = '❌ 加载失败';
@@ -1944,24 +1951,32 @@ function acTogglePlay(btn) {
 
   // 开始加载并播放
   audio.load();
+
+  // ★ 方法5: Web Audio API 终极兜底 — 异步获取真实 duration
+  const waaPromise = fetchDurationViaWAA(src).then(waaDur => {
+    if (waaDur && waaDur > 0 && acCurrentAudio === audio) {
+      console.log(`[audio] WAA拿到时长: ${waaDur.toFixed(1)}s`);
+      metadataResolved = true;
+      acUpdateTime(timeEl, fillEl, audio, waaDur);
+    }
+  });
+
   audio.play().then(() => {
     btn.textContent = '⏸';
-    // play 成功后如果还没有 duration，用 setTimeout 轮询等待
+
+    // 如果标准事件和 WAA 都还没拿到，轮询等待
     if (!metadataResolved) {
-      const waitForDuration = setInterval(() => {
-        if (!acCurrentAudio || acCurrentAudio !== audio) {
-          clearInterval(waitForDuration);
-          return;
-        }
-        if (audio.duration && audio.duration > 0) {
+      const poll = setInterval(() => {
+        if (!acCurrentAudio || acCurrentAudio !== audio) { clearInterval(poll); return; }
+        if ((isFinite(audio.duration) && audio.duration > 0) ||
+            acDurationCache.has(src)) {
           metadataResolved = true;
           acUpdateTime(timeEl, fillEl, audio);
-          clearInterval(waitForDuration);
+          clearInterval(poll);
         }
       }, 200);
-      // 10秒超时
       setTimeout(() => {
-        clearInterval(waitForDuration);
+        clearInterval(poll);
         if (!metadataResolved && acCurrentAudio === audio) {
           if (timeEl) timeEl.textContent = '🎵 正在播放';
         }
@@ -1979,11 +1994,17 @@ function acSeek(e, progressWrap) {
   const btn = wrap.querySelector('.ac-play-btn');
   const src = btn?.dataset.src;
   if (!src || !acCurrentAudio || acCurrentAudio._acSrc !== src) return;
-  if (!isFinite(acCurrentAudio.duration) || acCurrentAudio.duration <= 0) return;
+
+  // 优先使用缓存的 WAA 时长
+  let dur = acCurrentAudio.duration;
+  if (!isFinite(dur) || dur <= 0) {
+    if (acDurationCache.has(src)) dur = acDurationCache.get(src);
+    else return; // 真的拿不到，无法 seek
+  }
 
   const rect = progressWrap.getBoundingClientRect();
   const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  acCurrentAudio.currentTime = pct * acCurrentAudio.duration;
+  acCurrentAudio.currentTime = pct * dur;
 }
 
 // ── Stats ────────────────────────────────────────────────
